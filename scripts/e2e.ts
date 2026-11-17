@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { chownSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { decryptKey, type EncryptedKey } from "../packages/core/src/keystore.ts";
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   const secretary = await secret(home, "O2");
   const word = treasurer.mnemonic.split(" ")[0] ?? "";
   const wordFile = process.env.KOINON_SCAN_WORD;
-  if (wordFile) writeFileSync(wordFile, word, { mode: 0o600 });
+  if (wordFile) writeScanWord(wordFile, word);
   console.log("network: regtest");
   console.log("regtest sats have no value");
   if (process.env.KOINON_RATE_SOURCE === "fixture") {
@@ -240,6 +240,14 @@ function leak(text: string, word: string): string | null {
 function leaksWord(text: string, word: string): boolean {
   if (!/^[0-9a-f]+$/i.test(word)) return text.includes(word);
   return new RegExp(`(^|[^0-9a-fA-F])${word}([^0-9a-fA-F]|$)`).test(text);
+}
+
+// The container runs as root but the host log scan runs as the bind mount's owner (the CI runner user),
+// so the file is handed to that owner while staying unreadable to anyone else.
+function writeScanWord(file: string, word: string): void {
+  writeFileSync(file, word, { mode: 0o600 });
+  const owner = statSync(path.dirname(file));
+  if (process.getuid?.() === 0 && owner.uid !== 0) chownSync(file, owner.uid, owner.gid);
 }
 
 function required(name: string): string {

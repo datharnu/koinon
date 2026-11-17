@@ -18,7 +18,10 @@ hit "cHNidP" "psbt"
 hit "membre-" "pseudonym"
 hit "demo-pin-1" "pin"
 
-if [ -n "$wordfile" ] && [ -f "$wordfile" ]; then
+if [ -n "$wordfile" ] && [ -f "$wordfile" ] && [ ! -r "$wordfile" ]; then
+  echo "log scan: seed word file is not readable by $(id -un); it must be owned by the user running the scan"
+  exit 1
+elif [ -n "$wordfile" ] && [ -f "$wordfile" ]; then
   word=$(cat "$wordfile")
   if printf '%s' "$word" | grep -q '^[0-9a-fA-F][0-9a-fA-F]*$'; then
     if grep -E "(^|[^0-9a-fA-F])${word}([^0-9a-fA-F]|$)" "$file" >/dev/null; then
