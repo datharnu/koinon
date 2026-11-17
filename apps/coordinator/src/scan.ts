@@ -1,4 +1,4 @@
-import { Block, type Transaction } from "bitcoinjs-lib";
+import { Block, Transaction } from "bitcoinjs-lib";
 import type { DatabaseSync } from "node:sqlite";
 import { bytesToHex, xofForSats } from "@koinon/core";
 import type { BitcoinClient } from "./bitcoin.js";
@@ -9,6 +9,9 @@ interface ScriptOwner {
   index: number;
   change: 0 | 1;
 }
+
+/** Height stored for a mempool transaction. Confirmations read as 0. */
+const MEMPOOL_HEIGHT = -1;
 
 export async function scanChain(
   db: DatabaseSync,
@@ -23,15 +26,19 @@ export async function scanChain(
   };
   const start = cursor.needs_rescan ? 0 : cursor.scanned_height + 1;
   const scripts = loadScripts(db);
+  const seenAt = now.toISOString();
   for (let height = start; height <= tip; height += 1) {
     const hash = await bitcoin.getBlockHash(height);
     const hex = await bitcoin.getBlockHex(hash);
     const block = Block.fromHex(hex);
     for (const tx of block.transactions ?? []) {
-      applyTransaction(db, tx, height, scripts, rate, now.toISOString());
+      applyTransaction(db, tx, height, scripts, rate, seenAt);
     }
   }
   db.prepare("UPDATE chain_cursor SET scanned_height = ?, needs_rescan = 0 WHERE id = 1").run(tip);
+  for (const hex of await bitcoin.getMempoolHex()) {
+    applyTransaction(db, Transaction.fromHex(hex), MEMPOOL_HEIGHT, scripts, rate, seenAt);
+  }
   return tip;
 }
 
@@ -65,44 +72,54 @@ function applyTransaction(
   seenAt: string,
 ): void {
   const txid = tx.getId();
+  const confirmed = height >= 0;
   const consumed = new Map<string, bigint>();
+  const consumedXof = new Map<string, bigint>();
   if (!tx.isCoinbase()) {
     for (const input of tx.ins) {
       const prev = bytesToHex(Uint8Array.from(input.hash).reverse());
       const rows = db
-        .prepare("SELECT fund_id, sats FROM utxos WHERE txid = ? AND vout = ? AND spent_by IS NULL")
-        .all(prev, input.index) as { fund_id: string; sats: string }[];
+        .prepare("SELECT fund_id, sats, spent_by, xof_at_receipt FROM utxos WHERE txid = ? AND vout = ?")
+        .all(prev, input.index) as { fund_id: string; sats: string; spent_by: string | null; xof_at_receipt: string | null }[];
       for (const row of rows) {
+        if (row.spent_by && row.spent_by !== txid) continue;
         db.prepare(
-          "UPDATE utxos SET spent_by = ?, spent_height = ? WHERE fund_id = ? AND txid = ? AND vout = ?",
-        ).run(txid, height, row.fund_id, prev, input.index);
+          `UPDATE utxos SET spent_by = ?, spent_height = CASE WHEN ? >= 0 THEN ? ELSE spent_height END
+           WHERE fund_id = ? AND txid = ? AND vout = ?`,
+        ).run(txid, height, height, row.fund_id, prev, input.index);
         consumed.set(row.fund_id, (consumed.get(row.fund_id) ?? 0n) + BigInt(row.sats));
+        if (row.xof_at_receipt) {
+          consumedXof.set(row.fund_id, (consumedXof.get(row.fund_id) ?? 0n) + BigInt(row.xof_at_receipt));
+        }
       }
     }
   }
 
-  tx.outs.forEach((output, vout) => {
-    const owner = scripts.get(bytesToHex(output.script));
-    if (!owner) return;
-    const xof =
-      owner.change === 0 && rate.btc_eur ? String(xofForSats(output.value, rate.btc_eur)) : null;
-    db.prepare(
-      `INSERT INTO utxos (
-        fund_id, txid, vout, idx, change, sats, xof_at_receipt, block_height, seen_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (fund_id, txid, vout) DO NOTHING`,
-    ).run(
-      owner.fundId,
-      txid,
-      vout,
-      owner.index,
-      owner.change,
-      output.value.toString(),
-      xof,
-      height,
-      seenAt,
-    );
-  });
+  // Unconfirmed outputs stay off the ledger. A contribution appears after a mined block.
+  if (confirmed) {
+    tx.outs.forEach((output, vout) => {
+      const owner = scripts.get(bytesToHex(output.script));
+      if (!owner) return;
+      const xof =
+        owner.change === 0 && rate.btc_eur ? String(xofForSats(output.value, rate.btc_eur)) : null;
+      db.prepare(
+        `INSERT INTO utxos (
+          fund_id, txid, vout, idx, change, sats, xof_at_receipt, block_height, seen_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (fund_id, txid, vout) DO NOTHING`,
+      ).run(
+        owner.fundId,
+        txid,
+        vout,
+        owner.index,
+        owner.change,
+        output.value.toString(),
+        xof,
+        height,
+        seenAt,
+      );
+    });
+  }
 
   const allOut = tx.outs.reduce((sum, output) => sum + output.value, 0n);
   const external = tx.outs.reduce((sum, output) => {
@@ -113,13 +130,33 @@ function applyTransaction(
     const request = db.prepare("SELECT id FROM requests WHERE fund_id = ? AND broadcast_txid = ?").get(fundId, txid) as
       | { id: string }
       | undefined;
+    const xof = consumedXof.get(fundId);
     db.prepare(
-      `INSERT INTO spends (fund_id, txid, sats_in, sats_out, fee_sats, block_height, request_id, seen_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (fund_id, txid) DO NOTHING`,
-    ).run(fundId, txid, satsIn.toString(), external.toString(), fee.toString(), height, request?.id ?? null, seenAt);
-    db.prepare(
-      "UPDATE requests SET status = 'confirmed' WHERE fund_id = ? AND broadcast_txid = ? AND status = 'broadcast'",
-    ).run(fundId, txid);
+      `INSERT INTO spends (fund_id, txid, sats_in, sats_out, fee_sats, block_height, request_id, xof_at_spend, seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (fund_id, txid) DO UPDATE SET
+         sats_in = excluded.sats_in,
+         sats_out = excluded.sats_out,
+         fee_sats = excluded.fee_sats,
+         block_height = CASE WHEN excluded.block_height >= 0 THEN excluded.block_height ELSE spends.block_height END,
+         request_id = COALESCE(excluded.request_id, spends.request_id),
+         xof_at_spend = COALESCE(excluded.xof_at_spend, spends.xof_at_spend),
+         seen_at = CASE WHEN excluded.block_height >= 0 THEN excluded.seen_at ELSE spends.seen_at END`,
+    ).run(
+      fundId,
+      txid,
+      satsIn.toString(),
+      external.toString(),
+      fee.toString(),
+      height,
+      request?.id ?? null,
+      xof === undefined ? null : xof.toString(),
+      seenAt,
+    );
+    if (confirmed) {
+      db.prepare(
+        "UPDATE requests SET status = 'confirmed' WHERE fund_id = ? AND broadcast_txid = ? AND status = 'broadcast'",
+      ).run(fundId, txid);
+    }
   }
 }

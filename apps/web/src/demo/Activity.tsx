@@ -104,7 +104,14 @@ function SpendRow({ entry }: { entry: LedgerEntry }) {
         }
         title={t("Récupération par l'assemblée", "Assembly recovery")}
         subtitle={<Confirmations count={entry.confirmations} />}
-        right={<span className="tabular text-[15px] font-semibold">−{sats(entry.sats, lang)} sats</span>}
+        right={
+          <span className="flex flex-col items-end">
+            <span className="tabular text-[15px] font-semibold">
+              −{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}
+            </span>
+            {entry.xof_at_receipt ? <span className="tabular text-[12px] text-ink-3">{sats(entry.sats, lang)} sats</span> : null}
+          </span>
+        }
       />
     );
   }

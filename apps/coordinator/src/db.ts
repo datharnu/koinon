@@ -62,6 +62,7 @@ export function migrate(db: DatabaseSync): void {
       fee_sats TEXT NOT NULL,
       block_height INTEGER NOT NULL,
       request_id TEXT,
+      xof_at_spend TEXT,
       seen_at TEXT NOT NULL,
       PRIMARY KEY (fund_id, txid)
     );
@@ -120,6 +121,11 @@ export function migrate(db: DatabaseSync): void {
   const cursor = db.prepare("SELECT id FROM chain_cursor WHERE id = 1").get();
   if (!cursor) {
     db.prepare("INSERT INTO chain_cursor (id, scanned_height, needs_rescan) VALUES (1, -1, 0)").run();
+  }
+  const spendCols = db.prepare("PRAGMA table_info(spends)").all() as { name: string }[];
+  if (!spendCols.some((col) => col.name === "xof_at_spend")) {
+    db.exec("ALTER TABLE spends ADD COLUMN xof_at_spend TEXT");
+    db.prepare("UPDATE chain_cursor SET needs_rescan = 1 WHERE id = 1").run();
   }
 }
 

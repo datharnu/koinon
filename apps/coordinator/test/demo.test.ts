@@ -30,6 +30,9 @@ function node(refuse?: string): BitcoinClient {
       if (refuse) throw new Error(refuse);
       return "ab".repeat(32);
     },
+    async getMempoolHex() {
+      return [];
+    },
   };
 }
 

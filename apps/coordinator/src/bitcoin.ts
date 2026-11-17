@@ -3,6 +3,8 @@ export interface BitcoinClient {
   getBlockHash(height: number): Promise<string>;
   getBlockHex(hash: string): Promise<string>;
   sendRawTransaction(hex: string): Promise<string>;
+  /** Raw transactions in the mempool, hex. Used so a broadcast spend can show as 0 confirmations. */
+  getMempoolHex(): Promise<string[]>;
 }
 
 export function bitcoinRpc(args: { url: string; user: string; password: string }): BitcoinClient {
@@ -37,6 +39,14 @@ export function bitcoinRpc(args: { url: string; user: string; password: string }
     },
     async sendRawTransaction(hex) {
       return (await call("sendrawtransaction", [hex])) as string;
+    },
+    async getMempoolHex() {
+      const ids = (await call("getrawmempool", [])) as string[];
+      const hexes: string[] = [];
+      for (const id of ids) {
+        hexes.push((await call("getrawtransaction", [id, 0])) as string);
+      }
+      return hexes;
     },
   };
 }

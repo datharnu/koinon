@@ -100,7 +100,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 - Node answers show as toasts and inline results. Nothing is kept after a reload; the chain and the ledger stay.
 - Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Browsers or authenticators without PRF fall back to an 8-digit code, because the keystore refuses secrets under 8 characters. An 8-digit code is weak against someone who copies the browser storage; PBKDF2 310k slows that, it does not stop it. The code path was walked by automation; the passkey path was created and unlocked by hand in Chrome on macOS. Safari, Android and Windows Hello were not tried.
 - The "Try to cheat" sheet opens its own 10 000 F request when the Treasurer has none pending, so a pending request stays on the Secretary's phone after the attack.
-- After a recovery is accepted, the demo mines one confirmation so the coordinator's ledger (and the activity list) show it. Unconfirmed recoveries still do not appear: the indexer only reads blocks.
+- After a recovery is accepted, the indexer reads bitcoind's mempool so the spend can show as 0 confirmations (francs taken from the due's receipt, not a new rate). The demo still mines one block so the cheat-sheet story ends confirmed. Contributions still appear only after a mined block.
 - The in-browser bundle that signs (bitcoinjs, miniscript, secp256k1) is 708 kB, 228 kB gzipped, and loads only on `/app` and `/fonds`.
 - `@koinon/core` hashes with `@noble/hashes` instead of `node:crypto` so the same code signs in the browser.
 

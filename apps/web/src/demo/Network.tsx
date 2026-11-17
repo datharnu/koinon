@@ -359,7 +359,7 @@ function nodeVerdict(answer: NodeAnswer, refusedTitle: string, acceptedTitle: st
 async function waitForLedger(fundId: string): Promise<void> {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const { entries } = await endpoints.ledger(fundId);
-    if (entries.every((entry) => entry.confirmations > 0)) return;
+    if (entries.filter((entry) => entry.kind === "contribution").every((entry) => entry.confirmations > 0)) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 }
