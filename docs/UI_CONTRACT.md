@@ -45,7 +45,7 @@ A phone-sized layout is required when a UI is built, because the second signatur
 
 Who: a member, with no key.
 
-Data: `GET /v1/funds/:id` for `balance_sats`, `balance_xof`, `chain_tip`, and `rate`. `GET /v1/funds/:id/ledger` for each row: `kind` (`contribution` or `spend`), `sats`, `xof_at_receipt`, `confirmations`, `txid`, `fee_sats`.
+Data: `GET /v1/funds/:id` for `balance_sats`, `balance_xof`, `chain_tip`, and `rate`. `GET /v1/funds/:id/ledger` for each row: `kind` (`contribution` or `spend`), `sats`, `xof_at_receipt`, `confirmations`, `txid`, `fee_sats`, `index`, `indexes`. A recovery spend (`request_id` null) uses `indexes` to name whose due left, e.g. "Awa · recovery".
 
 Actions: refresh. The client does not send coins. A contribution appears only after the indexer sees it, which is after a mined block in this demo. Until then the state is `UNKNOWN`, not a new row.
 

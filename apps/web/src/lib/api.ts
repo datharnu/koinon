@@ -98,6 +98,7 @@ export interface LedgerEntry {
   txid: string;
   vout: number | null;
   index: number | null;
+  indexes: number[];
   sats: string;
   xof_at_receipt: string | null;
   fee_sats: string | null;

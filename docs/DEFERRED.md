@@ -98,7 +98,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 - The demo keeps all four keys in one browser, encrypted with one secret. A real fund keeps one key per phone.
 - `POST /v1/demo/faucet` and `POST /v1/demo/mine` exist only with `KOINON_DEMO=1`. The faucet pays only member addresses.
 - Node answers show as toasts and inline results. Nothing is kept after a reload; the chain and the ledger stay.
-- Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Browsers or authenticators without PRF fall back to an 8-digit code, because the keystore refuses secrets under 8 characters. An 8-digit code is weak against someone who copies the browser storage; PBKDF2 310k slows that, it does not stop it. The code path was walked by automation; the passkey path was created and unlocked by hand in Chrome on macOS. Safari, Android and Windows Hello were not tried.
+- Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Create sends `prf: {}` so Safari 18 / iCloud and Android GPM enable hmac-secret; the 32 bytes come from a following `get()` with `eval` (Chrome may already return them at create). `getClientCapabilities()["extension:prf"] === false` hides the passkey button. Windows Hello has no hmac-secret: create reports `prf.enabled === false` and the UI falls back to an 8-digit code without a second prompt. The three client shapes are covered by `apps/web/src/lib/passkey.test.ts` (7 passed). Chrome 157 on this Mac reports `extension:prf: true`. A live Safari Touch ID, Android GPM, or Windows Hello ceremony was not completed here — those need the device.
 - The "Try to cheat" sheet opens its own 10 000 F request when the Treasurer has none pending, so a pending request stays on the Secretary's phone after the attack.
 - After a recovery is accepted, the indexer reads bitcoind's mempool so the spend can show as 0 confirmations (francs taken from the due's receipt, not a new rate). The demo still mines one block so the cheat-sheet story ends confirmed. Contributions still appear only after a mined block.
 - The in-browser bundle that signs (bitcoinjs, miniscript, secp256k1) is 708 kB, 228 kB gzipped, and loads only on `/app` and `/fonds`.
@@ -107,7 +107,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 ## Not started
 
 - A run of `docker compose up` on a developer machine (CI runs it).
-- A public deployment. `docs/DEPLOY.md` describes one.
+- A public coordinator. The homepage is on Vercel at https://koinon-ten.vercel.app (static `apps/web` build, fetched 17 Nov 2026). `/app` and `/v1` are not a live demo on that host. `docs/DEPLOY.md` is the VPS path.
 - A service worker or offline mode. The app needs the coordinator and the relay.
 - Wolof strings. The app is French and English.
 

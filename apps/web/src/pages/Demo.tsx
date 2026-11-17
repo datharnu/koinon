@@ -9,7 +9,7 @@ import { Note, ScreenHeader, StickyFooter } from "../demo/ui";
 import { endpoints } from "../lib/api";
 import { createDemoFund, errorCode, type OfficerRole, type SetupStep } from "../lib/flows";
 import { useMedia } from "../lib/media";
-import { createPasskey, passkeyAvailable, PasskeyError, readUnlock, unlockWithPasskey, writeUnlock, type UnlockMethod } from "../lib/passkey";
+import { createPasskey, passkeyAvailable, passkeyPrfOffered, PasskeyError, readUnlock, unlockWithPasskey, writeUnlock, type UnlockMethod } from "../lib/passkey";
 import { PEOPLE, roleTitle } from "../lib/people";
 import { usePrefs } from "../lib/prefs";
 import { forgetFund, openSecret, readConfig, type FundConfig, type Secret } from "../lib/vault";
@@ -111,8 +111,17 @@ const stepOrder: SetupStep[] = ["keys", "register", "members", "dues", "done"];
 
 type SetupView = { name: "welcome"; failure?: string } | { name: "code" } | { name: "confirm"; code: string; mismatches?: number } | { name: "progress" };
 
+function usePasskeyOffer(): boolean {
+  const [offer, setOffer] = useState(passkeyAvailable);
+  useEffect(() => {
+    void passkeyPrfOffered().then(setOffer);
+  }, []);
+  return offer;
+}
+
 function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<Role, Secret>) => void }) {
   const { t } = usePrefs();
+  const passkeys = usePasskeyOffer();
   const health = useHealth();
   const [name, setName] = useState("Association des ressortissants de Kolda");
   const [view, setView] = useState<SetupView>({ name: "welcome" });
@@ -227,7 +236,10 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
           {failure ? (
             <Note tone="bad" icon={<IconAlert size={16} />}>
               {failure === "NO_PRF"
-                ? t("Cette passkey ne sait pas chiffrer des clés sur ce navigateur. Utilisez un code à 8 chiffres.", "This passkey can't encrypt keys on this browser. Use an 8-digit code.")
+                ? t(
+                    "Ce navigateur ne peut pas dériver un secret de la passkey (Windows Hello, ou Safari trop ancien). Utilisez un code à 8 chiffres sur cet appareil.",
+                    "This browser can't derive a secret from the passkey (Windows Hello, or Safari that's too old). Use an 8-digit code on this device.",
+                  )
                 : t(`La création a échoué (${failure}). Rien n'est perdu : réessayez.`, `Creation failed (${failure}). Nothing is lost: try again.`)}
             </Note>
           ) : null}
@@ -235,7 +247,7 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
       </div>
       <StickyFooter>
         <div className="flex flex-col gap-1">
-          {passkeyAvailable() && failure !== "NO_PRF" ? (
+          {passkeys && failure !== "NO_PRF" ? (
             <>
               <Button size="lg" block icon={<IconPasskey size={20} />} onClick={() => void withPasskey()} busy={passkeyBusy ? t("En attente de la passkey…", "Waiting for the passkey…") : false} disabled={!canCreate}>
                 {t("Créer avec une passkey", "Create with a passkey")}
@@ -310,7 +322,16 @@ function Unlock({ config, onOpen, onForget }: { config: FundConfig; onOpen: (sec
       onOpen(await openAll(await secret()));
     } catch (error) {
       if (error instanceof PasskeyError) {
-        if (error.code !== "CANCELLED") setFailure(t("La passkey n'a pas répondu.", "The passkey did not answer."));
+        if (error.code === "CANCELLED") {
+          /* the system sheet was dismissed */
+        } else if (error.code === "NO_PRF") {
+          setFailure(
+            t(
+              "Ce navigateur ne dérive pas le secret de la passkey. Safari 18, Chrome sur macOS ou Chrome sur Android le peuvent. Recommencez avec un code ici.",
+              "This browser can't derive the passkey secret. Safari 18, Chrome on macOS, or Chrome on Android can. Start again with a code here.",
+            ),
+          );
+        } else setFailure(t("La passkey n'a pas répondu.", "The passkey did not answer."));
       } else {
         setFailure(errorCode(error) === "NO_KEY" ? t("Aucune clé sur cet appareil", "No key on this device") : t("Code incorrect", "Wrong code"));
         setAttempt((value) => value + 1);
