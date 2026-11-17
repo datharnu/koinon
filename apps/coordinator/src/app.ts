@@ -244,12 +244,15 @@ function buildServer(deps: AppDeps): FastifyInstance {
     const offset = boundedInt(request, "offset", 0, 100_000);
     const rows = deps.db
       .prepare(
-        `SELECT kind, txid, vout, idx, sats, xof, block_height, seen_at, fee, request_id FROM (
-           SELECT 'contribution' AS kind, txid, vout, idx, sats, xof_at_receipt AS xof, block_height, seen_at,
+        `SELECT kind, txid, vout, idx, indexes, sats, xof, block_height, seen_at, fee, request_id FROM (
+           SELECT 'contribution' AS kind, txid, vout, idx, CAST(idx AS TEXT) AS indexes, sats, xof_at_receipt AS xof, block_height, seen_at,
                   NULL AS fee, NULL AS request_id
            FROM utxos WHERE fund_id = ? AND change = 0
            UNION ALL
-           SELECT 'spend', txid, NULL, NULL, sats_out, xof_at_spend, block_height, seen_at, fee_sats, request_id
+           SELECT 'spend', txid, NULL,
+                  (SELECT MIN(idx) FROM utxos WHERE fund_id = spends.fund_id AND spent_by = spends.txid AND change = 0),
+                  (SELECT GROUP_CONCAT(idx) FROM utxos WHERE fund_id = spends.fund_id AND spent_by = spends.txid AND change = 0),
+                  sats_out, xof_at_spend, block_height, seen_at, fee_sats, request_id
            FROM spends WHERE fund_id = ?
          ) AS ledger ORDER BY seen_at DESC LIMIT ? OFFSET ?`,
       )
@@ -261,6 +264,7 @@ function buildServer(deps: AppDeps): FastifyInstance {
         txid: row.txid,
         vout: row.vout,
         index: row.idx,
+        indexes: parseIndexes(row.indexes, row.idx),
         sats: row.sats,
         xof_at_receipt: row.xof,
         fee_sats: row.fee,
@@ -445,12 +449,24 @@ interface LedgerRow {
   txid: string;
   vout: number | null;
   idx: number | null;
+  indexes: string | null;
   sats: string;
   xof: string | null;
   block_height: number;
   seen_at: string;
   fee: string | null;
   request_id: string | null;
+}
+
+function parseIndexes(raw: string | null, fallback: number | null): number[] {
+  if (raw) {
+    const parsed = raw
+      .split(",")
+      .map((part) => Number(part))
+      .filter((value) => Number.isInteger(value));
+    if (parsed.length) return parsed;
+  }
+  return fallback === null ? [] : [fallback];
 }
 
 function routeId(request: FastifyRequest): string {

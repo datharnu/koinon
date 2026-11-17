@@ -4,11 +4,11 @@
 
 **The treasurer of a shared fund cannot move the money alone.**
 
-[Run it](#getting-started) · [What works today](#status) · [The proof](#evidence) · [Policy](docs/POLICY.md)
+[Site](https://koinon-ten.vercel.app) · [Run it](#getting-started) · [What works today](#status) · [The proof](#evidence) · [Policy](docs/POLICY.md)
 
-<sub>BITCOIN REGTEST / NOSTR / CLI. NO UI YET.</sub>
+<sub>BITCOIN REGTEST / NOSTR / WEB / CLI</sub>
 
-The proof ran on a local regtest node, Bitcoin Core 32.1, on 17 Nov 2026. It did not run on mainnet, and it did not run in Docker.
+The homepage is on Vercel. The spend rule ran on a local regtest node, Bitcoin Core 32.1, on 17 Nov 2026. It did not run on mainnet. Docker Compose has run in GitHub Actions, not as a public demo.
 
 </div>
 
@@ -40,13 +40,17 @@ On 17 Nov 2026, 1,000 XOF locked at 2,541 sats. The euro price in that run was a
 
 **Everything here runs on regtest. Those sats have no value.** A live price from mempool.space was requested once and timed out. The server returned `RATE_UNAVAILABLE` and did not invent a price.
 
-<!-- TODO: add demo GIF. There is no UI, so the recording is a terminal. -->
+<!-- TODO: add a demo GIF of the two-phone app. The site is live; the recording is not. -->
 
 <a id="demo"></a>
 
 ## Demo
 
-There is no website and no login. The CLI is the demo.
+The site is [https://koinon-ten.vercel.app](https://koinon-ten.vercel.app). It is the Vite app in `apps/web`, static files on Vercel. No login.
+
+That URL is the homepage a judge can read. `/app` is the two-phone demo (Treasurer and Secretary). Vercel does not run bitcoind, the coordinator, or the relay: `GET /v1/health` on that host is 404. Creating a fund, spending, and recovery still need the Docker stack from [docs/DEPLOY.md](docs/DEPLOY.md) (or `pnpm` against a local node). Until that VPS exists, `/app` will say the demo server is not answering.
+
+The CLI is still the proof that bitcoind refused one signature.
 
 **Five minutes, no Docker.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2.
 
@@ -182,7 +186,7 @@ sequenceDiagram
 | Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and one seed word, not every word of every seed. |
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
 
-Not claimed: mainnet, an audit, Lightning, Mobile Money, a UI, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. Docker Compose has run only on GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764), all nine checks and the container log scan passed), not on this machine.
+Not claimed: mainnet, an audit, Lightning, Mobile Money, a spend a judge can broadcast from Vercel, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. Docker Compose has run only on GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764), all nine checks and the container log scan passed), not as a public host.
 
 Review: none. No third party has read this. The severities in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) are the author's.
 
@@ -206,7 +210,7 @@ Recorded 17 Nov 2026 on this machine. Bitcoin Core 32.1. Long output is in [docs
 
 `pnpm test` earlier the same day, at the script proof, was 7. That count is kept in [docs/POLICY.md](docs/POLICY.md). The later count does not erase it.
 
-GitHub Actions is written in `.github/workflows/ci.yml` and has not run. There is no commit in this workspace to point at.
+GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764). Unit tests and the compose e2e passed. The live site is the web build, not that run.
 
 <!-- TODO: first commit hash, once the repo has one. -->
 
@@ -254,6 +258,7 @@ The signer re-derives the fund scripts from the xpubs stored on the device. A ch
 | Coordinator | Fastify 5 | Watch-only HTTP. Writes are rate-limited in memory, per process. |
 | Messages | `nostr-tools` 2.26.1, NIP-17 | The request is not a PSBT on the relay. |
 | Chain | Bitcoin Core 32.1, regtest | The refusal has to come from the node. |
+| Web | Vite 8, React 19, Tailwind 4 | Homepage and `/app`. Static build on Vercel. Signing still happens in the browser against a coordinator, not on Vercel. |
 | Package manager | pnpm 11.1.2 | Workspaces. There is no npm script runner beyond what pnpm exposes. |
 
 <a id="cli"></a>
@@ -281,7 +286,7 @@ pnpm koinon audit verify
 
 `attack single-sig` exits 0 when bitcoind refuses. It exits 1 if bitcoind accepts. `recover` before N prints the refusal and exits 0. That refusal is the result.
 
-Roles are labels, not names: O1 treasurer, O2 secretary, O3 president, K assembly. Full HTTP detail is [docs/API.md](docs/API.md). A future screen is specified in [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md) and is not built.
+Roles are labels, not names: O1 treasurer, O2 secretary, O3 president, K assembly. Full HTTP detail is [docs/API.md](docs/API.md). The screen is `apps/web`, live at [koinon-ten.vercel.app](https://koinon-ten.vercel.app). The contract it follows is [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md).
 
 <a id="getting-started"></a>
 
@@ -344,12 +349,12 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | `KOINON_RELAY` | for requests | `ws://127.0.0.1:8080` | Gift-wrap relay. |
 | `LOG_LEVEL` | no | `info` | Coordinator logs. Bodies are redacted. |
 
-`FIXTURE_EUR` and `KOINON_RATE_SOURCE` belong to the demo price process. The coordinator does not read them. The full list is [.env.example](.env.example). None of these are browser-public variables. There is no frontend.
+`FIXTURE_EUR` and `KOINON_RATE_SOURCE` belong to the demo price process. The coordinator does not read them. The full list is [.env.example](.env.example). None of these are browser-public variables. The frontend talks to `/v1` and `/relay` on the same origin; Vercel has neither.
 
 | Command | Covers |
 | --- | --- |
 | `pnpm test` | Policy, CFA rounding, signer refusals, key encryption, coordinator API, Nostr. No bitcoind. |
-| `pnpm typecheck` | core, coordinator, nostr, CLI. |
+| `pnpm typecheck` | core, coordinator, nostr, CLI, web. |
 | `pnpm kill-test` | 1 signature, 2 signatures, path B early, path B late. Starts bitcoind. |
 | `pnpm tamper-test` | Swapped recipient, no signature. |
 | `pnpm coordinator-spend` | HTTP spend against bitcoind. Live price if it answers. |
@@ -380,8 +385,9 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | [packages/nostr](packages/nostr) | Message schemas, gift wrap, the demo relay. |
 | [apps/coordinator](apps/coordinator) | HTTP, chain scan, ledger, audit. |
 | [apps/cli](apps/cli) | Demo commands. |
+| [apps/web](apps/web) | Homepage and two-phone demo. Live on Vercel as static files. |
 | [scripts](scripts) | Regtest, kill test, seed, e2e, log scan. |
-| [infra](infra) | Compose file. Not run. |
+| [infra](infra) | Compose file. Run in CI. Not a public host. |
 | [docs](docs) | Policy, API, threat model, UI contract, the run log. |
 
 <a id="status"></a>
@@ -400,13 +406,15 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | Gift wrap hides the purpose | `pnpm nostr-test` and `pnpm e2e` |
 | Keys encrypted, absent from the file and the transcript | `pnpm cli-demo` |
 | 12 members and the full checklist | `pnpm e2e` |
+| Homepage on Vercel | [koinon-ten.vercel.app](https://koinon-ten.vercel.app), fetched 17 Nov 2026. Static `apps/web` build. |
 
 </details>
 
 <details>
 <summary><strong>Built, not observed</strong></summary>
 
-- `docker compose up --build`, the container log scan, and the GitHub workflow. The files exist. They have not been run.
+- `/app` on Vercel talking to a public coordinator. Vercel has no `/v1`. A fetch of `https://koinon-ten.vercel.app/app` on 17 Nov 2026 was 404 until an SPA rewrite is deployed (`vercel.json`).
+- A public Docker host. `docs/DEPLOY.md` describes one.
 - A restarted coordinator reading the same database.
 - Two machines, or a public relay.
 - A pin typed at a prompt. The demo passes `--pin`.
@@ -418,7 +426,6 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 <details>
 <summary><strong>Deliberately absent</strong></summary>
 
-- Any UI. [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md) is the contract for one.
 - Lightning, mainnet, Banxaas, Mobile Money, AI, Wolof, phone numbers, push notifications.
 - Collusion protection beyond 2 of 3.
 - A hardcoded bitcoin price.
@@ -444,8 +451,8 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 
 ## 13. Next
 
-1. Run the compose stack once, and keep the output, including a failure if the first attempt fails.
-2. A UI that follows [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md), still on regtest, still refusing in the places this CLI already refuses.
+1. Put the compose stack on a VPS so [koinon-ten.vercel.app/app](https://koinon-ten.vercel.app/app) has a coordinator, or serve the same origin from Caddy as [docs/DEPLOY.md](docs/DEPLOY.md).
+2. Redeploy Vercel with `vercel.json` so `/app` is not 404.
 3. A real price response from mempool.space, shown next to the fixture so the two are not confused.
 4. `N` at about 4,320 blocks on a network where that wait means something. Not before the 10-block proof is boring.
 5. A third-party reading of the script. Then, and only then, a conversation about mainnet.

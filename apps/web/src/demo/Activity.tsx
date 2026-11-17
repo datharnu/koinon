@@ -54,7 +54,14 @@ export function ActivityList({ fundId, limit, emptyAction }: { fundId: string; l
         entry.kind === "contribution" ? (
           <ContributionRow key={`${entry.txid}:${entry.vout}`} entry={entry} name={entry.index !== null ? names.get(entry.index) : undefined} />
         ) : (
-          <SpendRow key={entry.txid} entry={entry} />
+          <SpendRow
+            key={entry.txid}
+            entry={entry}
+            recovered={(entry.indexes ?? []).flatMap((index) => {
+              const name = names.get(index);
+              return name ? [{ index, name }] : [];
+            })}
+          />
         ),
       )}
     </Group>
@@ -92,17 +99,23 @@ function ContributionRow({ entry, name }: { entry: LedgerEntry; name?: string })
   );
 }
 
-function SpendRow({ entry }: { entry: LedgerEntry }) {
+function SpendRow({ entry, recovered = [] }: { entry: LedgerEntry; recovered?: { index: number; name: string }[] }) {
   const { t, lang } = usePrefs();
   if (!entry.request_id) {
+    const who = recovered.map((item) => item.name).join(", ");
+    const first = recovered[0];
     return (
       <Row
         icon={
-          <IconBubble tone="warn">
-            <IconLifebuoy size={18} />
-          </IconBubble>
+          first ? (
+            <Avatar name={first.name} tone={memberTone(first.index)} />
+          ) : (
+            <IconBubble tone="warn">
+              <IconLifebuoy size={18} />
+            </IconBubble>
+          )
         }
-        title={t("Récupération par l'assemblée", "Assembly recovery")}
+        title={who ? t(`${who} · récupération`, `${who} · recovery`) : t("Récupération par l'assemblée", "Assembly recovery")}
         subtitle={<Confirmations count={entry.confirmations} />}
         right={
           <span className="flex flex-col items-end">

@@ -373,6 +373,8 @@ describe("coordinator", () => {
       sats: string;
       xof_at_receipt: string | null;
       confirmations: number;
+      index: number | null;
+      indexes: number[];
     }[];
     const recovery = entries.find((entry) => entry.kind === "spend");
     expect(recovery).toMatchObject({
@@ -381,6 +383,8 @@ describe("coordinator", () => {
       sats: "99000000",
       xof_at_receipt: contribution!.xof_at_receipt,
       confirmations: 1,
+      index: 0,
+      indexes: [0],
     });
     expect(entries.some((entry) => entry.kind === "contribution")).toBe(true);
 
@@ -418,13 +422,15 @@ describe("coordinator", () => {
     mempool.push(spend.toHex());
 
     const pending = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
-    const recovery = (pending.json.entries as { kind: string; confirmations: number; xof_at_receipt: string | null; request_id: string | null }[]).find(
-      (entry) => entry.kind === "spend",
-    );
+    const recovery = (
+      pending.json.entries as { kind: string; confirmations: number; xof_at_receipt: string | null; request_id: string | null; index: number | null; indexes: number[] }[]
+    ).find((entry) => entry.kind === "spend");
     expect(recovery).toMatchObject({
       request_id: null,
       confirmations: 0,
       xof_at_receipt: contribution!.xof_at_receipt,
+      index: 0,
+      indexes: [0],
     });
     const fund = await call(app, "GET", `/v1/funds/${fundId}`);
     expect(fund.json.balance_sats).toBe("0");

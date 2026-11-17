@@ -3,8 +3,11 @@
  * produce for this salt; they become the secret the keystore (PBKDF2 + AES-GCM) encrypts with.
  * Nothing about the passkey reaches the coordinator.
  *
- * Passkeys without PRF cannot derive a secret, so the app falls back to a 6-digit code.
+ * Create asks only `prf: {}` so Safari 18 / iCloud and Android's password manager enable hmac-secret.
+ * The 32 bytes come from a following `get()` with `eval` — Chrome may also return them at create.
+ * Windows Hello has no hmac-secret: create succeeds, PRF does not, and the UI falls back to an 8-digit code.
  */
+
 export type UnlockMethod = { method: "passkey"; credentialId: string; salt: string } | { method: "code" };
 
 const UNLOCK_KEY = "koinon.unlock.v1";
@@ -32,6 +35,20 @@ export function passkeyAvailable(): boolean {
   return typeof window !== "undefined" && window.isSecureContext && typeof window.PublicKeyCredential === "function";
 }
 
+/** False when this browser reports it cannot do PRF (Windows Hello, old Safari). Unknown → true, and create() decides. */
+export async function passkeyPrfOffered(): Promise<boolean> {
+  if (!passkeyAvailable()) return false;
+  const capsFn = (PublicKeyCredential as typeof PublicKeyCredential & { getClientCapabilities?: () => Promise<Record<string, boolean>> }).getClientCapabilities;
+  if (typeof capsFn !== "function") return true;
+  try {
+    const caps = await capsFn.call(PublicKeyCredential);
+    if (caps && Object.prototype.hasOwnProperty.call(caps, "extension:prf")) return caps["extension:prf"] === true;
+  } catch {
+    return true;
+  }
+  return true;
+}
+
 interface PrfOutput {
   prf?: { enabled?: boolean; results?: { first?: ArrayBuffer } };
 }
@@ -44,26 +61,33 @@ export async function createPasskey(label: string): Promise<{ secret: string; me
     credential = (await navigator.credentials.create({
       publicKey: {
         rp: { name: "Koinon", id: window.location.hostname },
-        user: { id: crypto.getRandomValues(new Uint8Array(16)), name: label, displayName: label },
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        user: { id: randomBuffer(16), name: label, displayName: label },
+        challenge: randomBuffer(32),
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },
           { type: "public-key", alg: -257 },
         ],
-        authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",
+          residentKey: "required",
+          requireResidentKey: true,
+          userVerification: "required",
+        },
         timeout: 90_000,
-        extensions: { prf: { eval: { first: salt } } } as AuthenticationExtensionsClientInputs,
+        // Empty object: associate hmac-secret. Do not eval here — Safari 18 and Android ignore or fail it.
+        extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
       },
     })) as PublicKeyCredential | null;
   } catch (error) {
     throw mapError(error);
   }
   if (!credential) throw new PasskeyError("CANCELLED");
-  const output = credential.getClientExtensionResults() as PrfOutput;
-  if (!output.prf?.enabled && !output.prf?.results?.first) throw new PasskeyError("NO_PRF");
   const method: UnlockMethod = { method: "passkey", credentialId: toB64(new Uint8Array(credential.rawId)), salt: toB64(salt) };
-  const first = output.prf.results?.first ? new Uint8Array(output.prf.results.first) : await evaluate(method);
-  return { secret: toHex(first), method };
+  const prf = (credential.getClientExtensionResults() as PrfOutput).prf;
+  if (prf?.results?.first) return { secret: toHex(new Uint8Array(prf.results.first)), method };
+  // Windows Hello: create works, hmac-secret does not. Don't prompt a second time.
+  if (prf?.enabled === false) throw new PasskeyError("NO_PRF");
+  return { secret: toHex(await evaluate(method)), method };
 }
 
 export async function unlockWithPasskey(method: Extract<UnlockMethod, { method: "passkey" }>): Promise<string> {
@@ -76,7 +100,7 @@ async function evaluate(method: Extract<UnlockMethod, { method: "passkey" }>): P
     assertion = (await navigator.credentials.get({
       publicKey: {
         rpId: window.location.hostname,
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        challenge: randomBuffer(32),
         allowCredentials: [{ type: "public-key", id: fromB64(method.credentialId) }],
         userVerification: "required",
         timeout: 90_000,
@@ -95,8 +119,16 @@ async function evaluate(method: Extract<UnlockMethod, { method: "passkey" }>): P
 function mapError(error: unknown): PasskeyError {
   if (error instanceof PasskeyError) return error;
   if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "AbortError")) return new PasskeyError("CANCELLED");
-  if (error instanceof DOMException && error.name === "NotSupportedError") return new PasskeyError("UNSUPPORTED");
+  if (error instanceof DOMException && error.name === "NotSupportedError") return new PasskeyError("NO_PRF");
   return new PasskeyError("FAILED");
+}
+
+function randomBuffer(bytes: number): ArrayBuffer {
+  return toBuffer(crypto.getRandomValues(new Uint8Array(bytes)));
+}
+
+function toBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 function toHex(bytes: Uint8Array): string {
@@ -109,9 +141,9 @@ function toB64(bytes: Uint8Array): string {
   return btoa(text);
 }
 
-function fromB64(text: string): Uint8Array<ArrayBuffer> {
+function fromB64(text: string): ArrayBuffer {
   const raw = atob(text);
-  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  const out = new Uint8Array(raw.length);
   for (let index = 0; index < raw.length; index += 1) out[index] = raw.charCodeAt(index);
-  return out;
+  return toBuffer(out);
 }

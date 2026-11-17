@@ -91,7 +91,9 @@ export function Row({
     <>
       {icon ? <span className="shrink-0">{icon}</span> : null}
       <span className="flex min-w-0 flex-1 flex-col text-left">
-        <span className={`truncate text-[15px] font-semibold ${danger ? "text-bad" : ""}`}>{title}</span>
+        <span className={`truncate text-[15px] font-semibold ${danger ? "text-bad" : ""}`} title={typeof title === "string" ? title : undefined}>
+          {title}
+        </span>
         {subtitle ? <span className="truncate text-[12.5px] text-ink-2">{subtitle}</span> : null}
       </span>
       {right ? <span className="flex shrink-0 items-center gap-1 text-right">{right}</span> : null}
