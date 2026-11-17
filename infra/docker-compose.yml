@@ -1,0 +1,160 @@
+# Regtest only. `docker compose up --build` starts bitcoind, the price fixture, the relay,
+# the coordinator, and a one-shot bootstrap. `docker compose down -v` deletes the chain and the keys.
+#
+# Published on 127.0.0.1: the coordinator (8787) and the relay (8080). The relay is published
+# because a CLI on the host receives gift wraps. bitcoind RPC is not published. Commands that
+# talk to bitcoind run on the network:
+#   docker compose --profile tools run --rm cli status
+#
+# The EUR figure comes from the fixture service. It is not a market price. The coordinator
+# fetches whatever MEMPOOL_PRICES_URL names. If that service is down, spends are refused.
+
+name: koinon
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: infra/Dockerfile
+  image: koinon:local
+
+services:
+  bitcoind:
+    image: bitcoin/bitcoin:32.1
+    command:
+      - -regtest=1
+      - -server=1
+      - -txindex=1
+      - -printtoconsole=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=koinon
+      - -rpcpassword=koinon
+      - -fallbackfee=0.0002
+      - -listen=0
+      - -dnsseed=0
+    volumes:
+      - bitcoind:/home/bitcoin/.bitcoin
+    healthcheck:
+      test: ["CMD", "bitcoin-cli", "-regtest", "-rpcuser=koinon", "-rpcpassword=koinon", "getblockcount"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 3s
+
+  prices:
+    <<: *app
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8090
+      FIXTURE_EUR: "60000"
+    command: ["pnpm", "exec", "tsx", "scripts/price-fixture.ts"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8090/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  relay:
+    <<: *app
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+    command: ["pnpm", "exec", "tsx", "packages/nostr/src/relay-main.ts"]
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  coordinator:
+    <<: *app
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      KOINON_DB: /data/koinon.sqlite
+      BITCOIN_RPC_URL: http://bitcoind:18443
+      BITCOIN_RPC_USER: koinon
+      BITCOIN_RPC_PASSWORD: koinon
+      MEMPOOL_PRICES_URL: http://prices:8090/
+      LOG_LEVEL: info
+    volumes:
+      - data:/data
+    ports:
+      - "127.0.0.1:8787:8787"
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      prices:
+        condition: service_healthy
+    command: ["pnpm", "exec", "tsx", "apps/coordinator/src/main.ts"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/v1/health').then((r)=>r.json()).then((j)=>process.exit(j.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  bootstrap:
+    <<: *app
+    environment: &demo-env
+      KOINON_HOME: /koinon
+      KOINON_COORDINATOR: http://coordinator:8787
+      KOINON_RELAY: ws://relay:8080
+      KOINON_PIN: demo-pin-1
+      KOINON_RATE_SOURCE: fixture
+      BITCOIN_RPC_URL: http://bitcoind:18443
+      BITCOIN_RPC_USER: koinon
+      BITCOIN_RPC_PASSWORD: koinon
+      BITCOIN_RPC_WALLET: bootstrap
+    volumes:
+      - home:/koinon
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      relay:
+        condition: service_started
+    command: ["pnpm", "exec", "tsx", "scripts/seed.ts"]
+    restart: "no"
+
+  e2e:
+    <<: *app
+    profiles: ["e2e"]
+    environment:
+      <<: *demo-env
+      KOINON_DB: /data/koinon.sqlite
+      KOINON_SCAN_WORD: /scan/word
+    volumes:
+      - home:/koinon
+      - data:/data
+      - ../.e2e:/scan
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      coordinator:
+        condition: service_healthy
+    command: ["pnpm", "exec", "tsx", "scripts/e2e.ts"]
+    restart: "no"
+
+  cli:
+    <<: *app
+    profiles: ["tools"]
+    environment:
+      <<: *demo-env
+    volumes:
+      - home:/koinon
+    entrypoint: ["pnpm", "exec", "tsx", "apps/cli/src/main.ts"]
+    restart: "no"
+
+volumes:
+  bitcoind:
+  data:
+  home:

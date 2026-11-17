@@ -1,0 +1,26 @@
+{
+  "name": "koinon",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "test": "pnpm --filter @koinon/core --filter @koinon/coordinator --filter @koinon/nostr test",
+    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/coordinator/tsconfig.json --noEmit && tsc -p packages/nostr/tsconfig.json --noEmit && tsc -p apps/cli/tsconfig.json --noEmit",
+    "kill-test": "tsx scripts/kill-policy.ts",
+    "coordinator": "tsx apps/coordinator/src/main.ts",
+    "coordinator-spend": "tsx apps/coordinator/scripts/spend.ts",
+    "tamper-test": "tsx scripts/tamper-attack.ts",
+    "nostr-test": "tsx scripts/nostr-dm.ts",
+    "koinon": "tsx apps/cli/src/main.ts",
+    "cli-demo": "tsx scripts/cli-demo.ts",
+    "seed": "tsx scripts/seed.ts",
+    "e2e": "sh scripts/e2e.sh"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

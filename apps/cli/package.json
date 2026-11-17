@@ -1,0 +1,14 @@
+{
+  "name": "@koinon/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "22.19.1"
+  },
+  "dependencies": {
+    "@koinon/core": "workspace:*",
+    "@koinon/nostr": "workspace:*",
+    "bitcoinjs-lib": "7.0.5"
+  }
+}

@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p .e2e
+      - run: docker compose -f infra/docker-compose.yml up -d --build
+      - run: docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
+      - run: docker compose -f infra/docker-compose.yml logs --no-color > .e2e/compose.log
+      - run: sh scripts/log-scan.sh .e2e/compose.log .e2e/word

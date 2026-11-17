@@ -1,0 +1,17 @@
+node_modules
+dist
+.regtest
+.koinon
+.koinon-demo
+.koinon-e2e
+.e2e
+data
+*.sqlite
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage
+*.tsbuildinfo
+.pnpm-store

@@ -1,0 +1,23 @@
+{
+  "name": "@koinon/nostr",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@koinon/core": "workspace:*",
+    "nostr-tools": "2.26.1",
+    "ws": "8.21.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "@types/ws": "8.18.1",
+    "vitest": "4.1.12"
+  }
+}
