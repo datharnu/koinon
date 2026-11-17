@@ -179,10 +179,10 @@ sequenceDiagram
 | An officer does not sign a swapped payment | `verifySpend` throws before `signVerifiedSpend` adds a signature | The officer must run that check. A patched client can ignore it. The script still requires two keys. |
 | Recovery cannot happen early | bitcoind returned `non-BIP68-final` | Only for the `N` the fund was created with. Regtest uses 10. |
 | The server has no key | Keys are encrypted on the officer's machine. The process has no key file. | Fund creation and member add are unauthenticated. The fund id is the capability. Money still needs two signatures. |
-| Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | That scan was the coordinator log and the command output on the host. Container logs were not scanned. |
+| Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and one seed word, not every word of every seed. |
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
 
-Not claimed: mainnet, an audit, Lightning, Mobile Money, a UI, collusion protection, a public Nostr relay, publisher authentication on the demo relay, or that Docker Compose has been run.
+Not claimed: mainnet, an audit, Lightning, Mobile Money, a UI, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. Docker Compose has run only on GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764), all nine checks and the container log scan passed), not on this machine.
 
 Review: none. No third party has read this. The severities in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) are the author's.
 

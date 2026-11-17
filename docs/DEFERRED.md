@@ -79,7 +79,13 @@ Not proven: two machines, a restarted coordinator reading the same database, or 
 - Audit verified, then one row was altered and verify failed at seq 1.
 - The coordinator log and the command output had no pseudonym, `xprv`, `tprv`, seed word, `nsec1`, pin, or PSBT base64.
 
-Not proven: `docker compose up`, the container log scan, or GitHub Actions. The compose file and `.github/workflows/ci.yml` are written. They have not been run.
+Not proven on this machine: `docker compose up` (Docker is not installed here).
+
+## GitHub Actions, 17 Nov 2026
+
+[Run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764) on commit `793ace8`: `unit` passed (core 22, coordinator 2, nostr 2, typecheck). `e2e` ran `docker compose up --build` and all nine checklist items passed inside compose. The container log scan over every compose service passed.
+
+The previous run failed only at the log scan: the e2e container runs as root and wrote `.e2e/word` with mode 0600, so the runner user could not read it. `scripts/e2e.ts` now hands the file to the owner of the mounted folder, still 0600.
 
 ## Docs, written 17 Nov 2026
 
@@ -87,7 +93,7 @@ Not proven: `docker compose up`, the container log scan, or GitHub Actions. The 
 
 ## Not started
 
-- A run of `docker compose up`, the container log scan, and GitHub Actions.
+- A run of `docker compose up` on a developer machine (CI runs it).
 - Any user interface. The screen contract is `docs/UI_CONTRACT.md`.
 
 ## Decisions
