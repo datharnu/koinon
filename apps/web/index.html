@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Koinon : la caisse Bitcoin de votre association, qui ne s'ouvre qu'à deux. Démo regtest, Dakar Bitcoin Hack 2026." />
+    <meta name="theme-color" content="#f1f1ee" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Koinon · la caisse qui s'ouvre à deux</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("koinon.theme");
+          document.documentElement.dataset.theme = saved === "dark" ? "dark" : "light";
+          var lang = localStorage.getItem("koinon.lang");
+          if (lang === "en" || lang === "fr") document.documentElement.lang = lang;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
