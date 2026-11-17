@@ -11,8 +11,8 @@ export function App() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-dvh place-items-center text-sm text-text-3">
-          <Spinner label="Koinon…" />
+        <div className="grid min-h-dvh place-items-center text-ink-3">
+          <Spinner size={22} />
         </div>
       }
     >

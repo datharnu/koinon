@@ -20,7 +20,7 @@ function initialLang(): Lang {
 }
 
 function initialTheme(): Theme {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
@@ -40,7 +40,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     const next: Theme = theme === "dark" ? "light" : "dark";
     const apply = () => {
       document.documentElement.dataset.theme = next;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next === "dark" ? "#100e0c" : "#f7f3eb");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next === "dark" ? "#09090a" : "#f1f1ee");
       localStorage.setItem("koinon.theme", next);
       setTheme(next);
     };

@@ -95,9 +95,12 @@ The previous run failed only at the log scan: the e2e container runs as root and
 
 `apps/web` (Vite, React, Tailwind, TanStack Query) is a homepage plus `/app`, a demo with the Treasurer's and the Secretary's phones side by side, and `/fonds/:id`, a read-only member view. It was walked in Chrome against a native regtest stack (bitcoind 32.1 from Homebrew, the price fixture, the relay, the coordinator with `KOINON_DEMO=1`): fund creation with 12 dues, a request opened and gift-wrapped to the Secretary, the Treasurer's single-signature transaction refused by bitcoind (`Signature must be zero for failed CHECK(MULTI)SIG`), a tampered PSBT refused locally (`PSBT_MISMATCH`), the second signature, broadcast, confirmation, a rejection with a reason, and recovery refused at `non-BIP68-final` then accepted after 10 blocks.
 
-- The demo keeps all four keys in one browser, encrypted with one code. A real fund keeps one key per phone.
+- The demo keeps all four keys in one browser, encrypted with one secret. A real fund keeps one key per phone.
 - `POST /v1/demo/faucet` and `POST /v1/demo/mine` exist only with `KOINON_DEMO=1`. The faucet pays only member addresses.
-- The network log in the demo lives in memory. A reload clears it; the chain and the ledger stay.
+- Node answers show as toasts and inline results. Nothing is kept after a reload; the chain and the ledger stay.
+- Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Browsers or authenticators without PRF fall back to an 8-digit code, because the keystore refuses secrets under 8 characters. An 8-digit code is weak against someone who copies the browser storage; PBKDF2 310k slows that, it does not stop it. The code path was walked by automation; the passkey path was created and unlocked by hand in Chrome on macOS. Safari, Android and Windows Hello were not tried.
+- The "Try to cheat" sheet opens its own 10 000 F request when the Treasurer has none pending, so a pending request stays on the Secretary's phone after the attack.
+- A recovery spend (path B) is not in the activity list until the coordinator's ledger reports it.
 - The in-browser bundle that signs (bitcoinjs, miniscript, secp256k1) is 708 kB, 228 kB gzipped, and loads only on `/app` and `/fonds`.
 - `@koinon/core` hashes with `@noble/hashes` instead of `node:crypto` so the same code signs in the browser.
 

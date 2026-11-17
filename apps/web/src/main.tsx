@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { PrefsProvider } from "./lib/prefs";
+import { ToastProvider } from "./ui/toast";
 import "./styles.css";
 
 const client = new QueryClient({
@@ -19,7 +20,9 @@ createRoot(root).render(
   <StrictMode>
     <PrefsProvider>
       <QueryClientProvider client={client}>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </QueryClientProvider>
     </PrefsProvider>
   </StrictMode>,

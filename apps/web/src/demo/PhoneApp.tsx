@@ -1,133 +1,105 @@
-import type { Role } from "@koinon/core";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { endpoints } from "../lib/api";
-import { useState, type ReactNode } from "react";
-import { usePrefs } from "../lib/prefs";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { OfficerRole } from "../lib/flows";
-import { RegtestBadge, RoleChip } from "../ui/status";
-import { StatusBar } from "../ui/phone";
-import { useDemo } from "./context";
-import { FundTab } from "./FundTab";
-import { MoreTab } from "./MoreTab";
-import { RequestsTab } from "./RequestsTab";
-import { SpendTab } from "./SpendTab";
-import { useInbox } from "./hooks";
+import { usePrefs } from "../lib/prefs";
+import { IconGear, IconHome, IconInbox } from "../ui/icons";
+import { useOfficerRequests } from "./hooks";
+import { HomeScreen } from "./HomeScreen";
+import { RecoveryScreen } from "./Network";
+import { RequestScreen } from "./RequestScreen";
+import { RequestsScreen } from "./RequestsScreen";
+import { SettingsScreen, MembersScreen, ActivityScreen } from "./SettingsScreen";
+import { SpendScreen } from "./SpendScreen";
+import { NavContext, type Route, type Tab } from "./ui";
 
-export type Tab = "fund" | "requests" | "spend" | "more";
+/** One officer's phone: tab roots with a bottom bar, pushed screens without it. */
+export function PhoneApp({ role, initial = "home" }: { role: OfficerRole; initial?: Tab }) {
+  const [stack, setStack] = useState<Route[]>([{ name: initial }]);
+  const [sheet, setSheet] = useState<ReactNode | null>(null);
 
-export function roleLabel(role: Role, t: (fr: string, en: string) => string): string {
-  switch (role) {
-    case "O1":
-      return t("Trésorier", "Treasurer");
-    case "O2":
-      return t("Secrétaire", "Secretary");
-    case "O3":
-      return t("Président", "President");
-    default:
-      return t("Assemblée", "Assembly");
+  const push = useCallback((route: Route) => setStack((current) => [...current, route]), []);
+  const back = useCallback(() => setStack((current) => (current.length > 1 ? current.slice(0, -1) : current)), []);
+  const tab = useCallback((next: Tab) => setStack([{ name: next }]), []);
+  const nav = useMemo(() => ({ push, back, tab, sheet: setSheet }), [push, back, tab]);
+
+  const route = stack[stack.length - 1] ?? { name: "home" };
+  const root = stack.length === 1;
+
+  return (
+    <NavContext.Provider value={nav}>
+      <div className="relative flex min-h-0 flex-1 flex-col bg-surface">
+        <div key={`${stack.length}-${route.name}`} className={`flex min-h-0 flex-1 flex-col ${root ? "" : "screen-in"}`}>
+          <Screen role={role} route={route} />
+        </div>
+        {root ? <BottomBar role={role} current={route.name as Tab} onTab={tab} /> : null}
+        {sheet}
+      </div>
+    </NavContext.Provider>
+  );
+}
+
+function Screen({ role, route }: { role: OfficerRole; route: Route }) {
+  switch (route.name) {
+    case "home":
+      return <HomeScreen role={role} />;
+    case "requests":
+      return <RequestsScreen role={role} />;
+    case "settings":
+      return <SettingsScreen role={role} />;
+    case "spend":
+      return <SpendScreen role={role} />;
+    case "request":
+      return <RequestScreen role={role} id={route.id} />;
+    case "members":
+      return <MembersScreen />;
+    case "recovery":
+      return <RecoveryScreen role={role} />;
+    case "activity":
+      return <ActivityScreen />;
   }
 }
 
-export function PhoneApp({ role, framed, initialTab = "fund" }: { role: OfficerRole; framed: boolean; initialTab?: Tab }) {
+function BottomBar({ role, current, onTab }: { role: OfficerRole; current: Tab; onTab: (tab: Tab) => void }) {
   const { t } = usePrefs();
-  const demo = useDemo();
-  const [tab, setTab] = useState<Tab>(initialTab);
-  const secret = demo.secrets[role];
-  const inbox = useInbox(demo.config, role, secret, demo.pulse);
-  const client = useQueryClient();
-  const received = (inbox.data?.items ?? []).filter((item) => !item.mine);
-  const statuses = useQueries({
-    queries: received.map((item) => ({ queryKey: ["request", item.requestId], queryFn: () => endpoints.request(item.requestId), staleTime: 2_000 })),
-  });
-  const waiting = statuses.filter(({ data }) => data && (data.status === "pending" || data.status === "draft") && !data.approvals.some((approval) => approval.officer === role)).length;
-
-  const go = (next: Tab) => {
-    setTab(next);
-    if (next === "requests") void client.invalidateQueries({ queryKey: ["inbox", demo.config.fundId, role] });
-  };
-
+  const { toSign } = useOfficerRequests(role);
+  const items: { id: Exclude<Tab, "settings">; label: string; icon: ReactNode; badge?: number }[] = [
+    { id: "home", label: t("Accueil", "Home"), icon: <IconHome size={20} /> },
+    { id: "requests", label: t("Demandes", "Requests"), icon: <IconInbox size={20} />, badge: toSign.length },
+  ];
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {framed ? <StatusBar right={<RegtestBadge label="regtest" />} /> : null}
-      <header className="flex shrink-0 items-center justify-between gap-3 px-5 pb-3 pt-2">
-        <div className="min-w-0">
-          <p className="truncate text-[16px] font-semibold" title={demo.config.name}>
-            {demo.config.name}
-          </p>
-          {!framed ? <RegtestBadge label={t("regtest · sats sans valeur", "regtest · sats have no value")} /> : null}
-        </div>
-        {framed ? (
-          <span className="shrink-0">
-            <RoleChip role={role} label={roleLabel(role, t)} />
-          </span>
-        ) : null}
-      </header>
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-        {tab === "fund" ? <FundTab /> : null}
-        {tab === "requests" ? <RequestsTab role={role} inbox={inbox} onCompose={() => go("spend")} /> : null}
-        {tab === "spend" ? <SpendTab role={role} onDone={() => go("requests")} /> : null}
-        {tab === "more" ? <MoreTab role={role} /> : null}
+    <nav aria-label={t("Navigation", "Navigation")} className="flex shrink-0 items-center gap-2 bg-surface px-4 pb-[max(env(safe-area-inset-bottom),14px)] pt-2">
+      <div className="flex flex-1 items-center gap-1 rounded-full bg-card p-1">
+        {items.map((item) => {
+          const active = current === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-current={active ? "page" : undefined}
+              onClick={() => onTab(item.id)}
+              className={`press relative flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-[14px] font-semibold transition-colors ${
+                active ? "bg-surface text-ink shadow-[0_2px_8px_-3px_rgb(0_0_0/0.18)]" : "text-ink-3 hover:text-ink"
+              }`}
+            >
+              <span className={active ? "text-brand" : ""}>{item.icon}</span>
+              {item.label}
+              {item.badge ? (
+                <span className="tabular grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-on-brand" aria-label={t(`${item.badge} à signer`, `${item.badge} to sign`)}>
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
-      <nav aria-label={t("Navigation", "Navigation")} className="grid shrink-0 grid-cols-4 border-t border-line bg-panel px-2 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5">
-        <TabButton active={tab === "fund"} onClick={() => go("fund")} label={t("Fonds", "Fund")} icon={<IconFund />} />
-        <TabButton active={tab === "requests"} onClick={() => go("requests")} label={t("Demandes", "Requests")} icon={<IconInbox />} badge={waiting} />
-        <TabButton active={tab === "spend"} onClick={() => go("spend")} label={t("Dépenser", "Spend")} icon={<IconSpend />} />
-        <TabButton active={tab === "more"} onClick={() => go("more")} label={t("Plus", "More")} icon={<IconMore />} />
-      </nav>
-    </div>
-  );
-}
-
-function TabButton({ active, onClick, label, icon, badge = 0 }: { active: boolean; onClick: () => void; label: string; icon: ReactNode; badge?: number }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={`relative flex h-14 flex-col items-center justify-center gap-1 rounded-[10px] text-[11px] font-medium transition-colors ${active ? "text-text" : "text-text-3 hover:text-text-2"}`}
-    >
-      <span className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${active ? "bg-raise" : ""}`}>{icon}</span>
-      {label}
-      {badge > 0 ? (
-        <span className="absolute right-[18%] top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 font-mono text-[10px] text-on-brand">{badge}</span>
-      ) : null}
-    </button>
-  );
-}
-
-const iconProps = { viewBox: "0 0 20 20", className: "size-[18px]", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-
-function IconFund() {
-  return (
-    <svg aria-hidden {...iconProps}>
-      <rect x="2.5" y="5" width="15" height="11" rx="3.5" />
-      <circle cx="7.5" cy="10.5" r="1.3" />
-      <circle cx="12.5" cy="10.5" r="1.3" />
-    </svg>
-  );
-}
-function IconInbox() {
-  return (
-    <svg aria-hidden {...iconProps}>
-      <path d="M3 11.5 5 4.5h10l2 7v4h-14z" />
-      <path d="M3 11.5h4l1 2h4l1-2h4" />
-    </svg>
-  );
-}
-function IconSpend() {
-  return (
-    <svg aria-hidden {...iconProps}>
-      <path d="M10 15V5m0 0-3.5 3.5M10 5l3.5 3.5" />
-      <path d="M4 16.5h12" />
-    </svg>
-  );
-}
-function IconMore() {
-  return (
-    <svg aria-hidden {...iconProps}>
-      <circle cx="5" cy="10" r="1" fill="currentColor" />
-      <circle cx="10" cy="10" r="1" fill="currentColor" />
-      <circle cx="15" cy="10" r="1" fill="currentColor" />
-    </svg>
+      <button
+        type="button"
+        aria-label={t("Réglages", "Settings")}
+        aria-current={current === "settings" ? "page" : undefined}
+        onClick={() => onTab("settings")}
+        className={`press grid size-[52px] shrink-0 place-items-center rounded-full transition-colors ${current === "settings" ? "bg-ink text-surface" : "bg-card text-ink-2 hover:text-ink"}`}
+      >
+        <IconGear size={21} />
+      </button>
+    </nav>
   );
 }

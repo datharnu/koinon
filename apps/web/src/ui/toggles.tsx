@@ -1,4 +1,5 @@
 import { usePrefs } from "../lib/prefs";
+import { IconMoon, IconSun } from "./icons";
 
 export function ThemeToggle() {
   const { theme, toggleTheme, t } = usePrefs();
@@ -7,16 +8,10 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={dark ? t("Passer au thème clair", "Switch to light theme") : t("Passer au thème sombre", "Switch to dark theme")}
-      className="relative grid size-9 place-items-center overflow-hidden rounded-[var(--radius-ctl)] text-text-2 transition-colors hover:bg-raise hover:text-text"
+      aria-label={dark ? t("Passer en clair", "Switch to light") : t("Passer en sombre", "Switch to dark")}
+      className="press grid size-10 place-items-center rounded-full text-ink-2 hover:bg-card hover:text-ink"
     >
-      <svg aria-hidden viewBox="0 0 20 20" className={`absolute size-[18px] transition-transform duration-500 ease-[var(--ease-out)] ${dark ? "translate-y-0" : "-translate-y-8"}`}>
-        <path d="M15.5 12.3A6.5 6.5 0 0 1 7.7 4.5a6.5 6.5 0 1 0 7.8 7.8Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      </svg>
-      <svg aria-hidden viewBox="0 0 20 20" className={`absolute size-[18px] transition-transform duration-500 ease-[var(--ease-out)] ${dark ? "translate-y-8" : "translate-y-0"}`}>
-        <circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3 6 14M14 6l1.3-1.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
+      {dark ? <IconSun size={19} /> : <IconMoon size={19} />}
     </button>
   );
 }
@@ -24,16 +19,35 @@ export function ThemeToggle() {
 export function LangToggle() {
   const { lang, setLang } = usePrefs();
   return (
-    <div role="group" aria-label="Langue / Language" className="flex h-9 items-center rounded-[var(--radius-ctl)] bg-raise p-0.5 hairline">
+    <div role="group" aria-label="Langue / Language" className="flex h-9 items-center rounded-full bg-card-2 p-1">
       {(["fr", "en"] as const).map((item) => (
         <button
           key={item}
           type="button"
           aria-pressed={lang === item}
           onClick={() => setLang(item)}
-          className={`h-8 rounded-[8px] px-2.5 font-mono text-[12px] uppercase transition-colors ${lang === item ? "bg-panel text-text hairline" : "text-text-3 hover:text-text"}`}
+          className={`h-7 rounded-full px-3 text-[13px] font-semibold uppercase transition-colors ${lang === item ? "bg-surface text-ink shadow-[0_1px_4px_-1px_rgb(0_0_0/0.15)]" : "text-ink-3 hover:text-ink"}`}
         >
           {item}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Two-option segmented control used inside the app (theme, language). */
+export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { id: T; label: string }[]; onChange: (value: T) => void; label: string }) {
+  return (
+    <div role="group" aria-label={label} className="flex h-9 items-center rounded-full bg-card-2 p-1">
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          aria-pressed={value === option.id}
+          onClick={() => onChange(option.id)}
+          className={`h-7 rounded-full px-3 text-[13px] font-semibold transition-colors ${value === option.id ? "bg-surface text-ink shadow-[0_1px_4px_-1px_rgb(0_0_0/0.15)]" : "text-ink-3"}`}
+        >
+          {option.label}
         </button>
       ))}
     </div>

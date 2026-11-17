@@ -1,10 +1,13 @@
 import type { Lang } from "./prefs";
 
-/** XOF are integers; group with a narrow no-break space the way Dakar prints prices. */
+/** No-break space, not U+202F: Plus Jakarta Sans has no narrow-space glyph. */
+const FR_GROUP = "\u00a0";
+
+/** XOF are integers; group thousands the way Dakar prints prices. */
 export function xof(value: string | number | bigint | null | undefined, lang: Lang): string {
   if (value === null || value === undefined || value === "") return "—";
   const text = BigInt(value).toString();
-  const grouped = text.replace(/\B(?=(\d{3})+(?!\d))/g, lang === "fr" ? "\u202f" : ",");
+  const grouped = text.replace(/\B(?=(\d{3})+(?!\d))/g, lang === "fr" ? FR_GROUP : ",");
   return `${grouped} F`;
 }
 
@@ -12,7 +15,7 @@ export function xof(value: string | number | bigint | null | undefined, lang: La
 export function sats(value: string | bigint | null | undefined, lang: Lang): string {
   if (value === null || value === undefined || value === "") return "—";
   const text = BigInt(value).toString();
-  return text.replace(/\B(?=(\d{3})+(?!\d))/g, lang === "fr" ? "\u202f" : ",");
+  return text.replace(/\B(?=(\d{3})+(?!\d))/g, lang === "fr" ? FR_GROUP : ",");
 }
 
 /** Middle cut for rows. Full value stays in the title and on detail views. */
