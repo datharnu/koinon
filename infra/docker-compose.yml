@@ -1,6 +1,7 @@
 # Regtest only. `docker compose up --build` starts bitcoind, the price fixture, the relay,
 # the coordinator, and a one-shot bootstrap. `docker compose down -v` deletes the chain and the keys.
 #
+# The web app is on http://127.0.0.1:8000 (Caddy: static files, /v1 and /relay on one origin).
 # Published on 127.0.0.1: the coordinator (8787) and the relay (8080). The relay is published
 # because a CLI on the host receives gift wraps. bitcoind RPC is not published. Commands that
 # talk to bitcoind run on the network:
@@ -80,6 +81,9 @@ services:
       BITCOIN_RPC_PASSWORD: koinon
       MEMPOOL_PRICES_URL: http://prices:8090/
       LOG_LEVEL: info
+      # Regtest faucet + miner for the browser demo. Never on a non-regtest node.
+      KOINON_DEMO: "1"
+      KOINON_DEMO_WALLET: faucet
     volumes:
       - data:/data
     ports:
@@ -102,6 +106,24 @@ services:
       timeout: 5s
       retries: 30
       start_period: 5s
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+    image: koinon-web:local
+    environment:
+      KOINON_SITE: ${KOINON_SITE:-:80}
+    ports:
+      - "${KOINON_WEB_BIND:-127.0.0.1:8000}:80"
+      - "${KOINON_WEB_TLS_BIND:-127.0.0.1:8443}:443"
+    volumes:
+      - caddy:/data
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      relay:
+        condition: service_started
 
   bootstrap:
     <<: *app
@@ -158,3 +180,4 @@ volumes:
   bitcoind:
   data:
   home:
+  caddy:

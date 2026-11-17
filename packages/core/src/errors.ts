@@ -10,6 +10,7 @@ export const ErrorCode = {
   NOT_FOUND: "NOT_FOUND",
   VALIDATION: "VALIDATION",
   FEE_OVER_CAP: "FEE_OVER_CAP",
+  NODE_REJECTED: "NODE_REJECTED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

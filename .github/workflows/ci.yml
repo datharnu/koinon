@@ -19,6 +19,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
+      - run: pnpm build:web
 
   e2e:
     runs-on: ubuntu-latest
@@ -27,5 +28,11 @@ jobs:
       - run: mkdir -p .e2e
       - run: docker compose -f infra/docker-compose.yml up -d --build
       - run: docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
+      - name: web through caddy (app, api, relay upgrade)
+        run: |
+          curl -fsS http://127.0.0.1:8000/ | grep -q '<div id="root">'
+          curl -fsS http://127.0.0.1:8000/app | grep -q '<div id="root">'
+          curl -fsS http://127.0.0.1:8000/v1/health | grep -q '"demo":true'
+          curl -sS -o /dev/null -w '%{http_code}' --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' --max-time 3 http://127.0.0.1:8000/relay | grep -q 101
       - run: docker compose -f infra/docker-compose.yml logs --no-color > .e2e/compose.log
       - run: sh scripts/log-scan.sh .e2e/compose.log .e2e/word

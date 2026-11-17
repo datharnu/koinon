@@ -91,10 +91,22 @@ The previous run failed only at the log scan: the e2e container runs as root and
 
 `README.md`, `docs/THREAT_MODEL.md`, and `docs/UI_CONTRACT.md` are written. They describe the runs above. They do not add a run of compose, of GitHub Actions, or of a live mempool price.
 
+## Web app, 17 Nov 2026
+
+`apps/web` (Vite, React, Tailwind, TanStack Query) is a homepage plus `/app`, a demo with the Treasurer's and the Secretary's phones side by side, and `/fonds/:id`, a read-only member view. It was walked in Chrome against a native regtest stack (bitcoind 32.1 from Homebrew, the price fixture, the relay, the coordinator with `KOINON_DEMO=1`): fund creation with 12 dues, a request opened and gift-wrapped to the Secretary, the Treasurer's single-signature transaction refused by bitcoind (`Signature must be zero for failed CHECK(MULTI)SIG`), a tampered PSBT refused locally (`PSBT_MISMATCH`), the second signature, broadcast, confirmation, a rejection with a reason, and recovery refused at `non-BIP68-final` then accepted after 10 blocks.
+
+- The demo keeps all four keys in one browser, encrypted with one code. A real fund keeps one key per phone.
+- `POST /v1/demo/faucet` and `POST /v1/demo/mine` exist only with `KOINON_DEMO=1`. The faucet pays only member addresses.
+- The network log in the demo lives in memory. A reload clears it; the chain and the ledger stay.
+- The in-browser bundle that signs (bitcoinjs, miniscript, secp256k1) is 708 kB, 228 kB gzipped, and loads only on `/app` and `/fonds`.
+- `@koinon/core` hashes with `@noble/hashes` instead of `node:crypto` so the same code signs in the browser.
+
 ## Not started
 
 - A run of `docker compose up` on a developer machine (CI runs it).
-- Any user interface. The screen contract is `docs/UI_CONTRACT.md`.
+- A public deployment. `docs/DEPLOY.md` describes one.
+- A service worker or offline mode. The app needs the coordinator and the relay.
+- Wolof strings. The app is French and English.
 
 ## Decisions
 

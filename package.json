@@ -8,7 +8,8 @@
   "packageManager": "pnpm@11.1.2",
   "scripts": {
     "test": "pnpm --filter @koinon/core --filter @koinon/coordinator --filter @koinon/nostr test",
-    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/coordinator/tsconfig.json --noEmit && tsc -p packages/nostr/tsconfig.json --noEmit && tsc -p apps/cli/tsconfig.json --noEmit",
+    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/coordinator/tsconfig.json --noEmit && tsc -p packages/nostr/tsconfig.json --noEmit && tsc -p apps/cli/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "build:web": "pnpm --filter @koinon/web build",
     "kill-test": "tsx scripts/kill-policy.ts",
     "coordinator": "tsx apps/coordinator/src/main.ts",
     "coordinator-spend": "tsx apps/coordinator/scripts/spend.ts",

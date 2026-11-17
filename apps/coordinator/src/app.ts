@@ -19,6 +19,7 @@ import { verifyAudit, type AuditRow } from "./audit.js";
 import { appendAudit } from "./audit.js";
 import type { BitcoinClient } from "./bitcoin.js";
 import { withTx } from "./db.js";
+import type { DemoWallet } from "./demo.js";
 import { balanceSats, fundById, fundKeys, xpubFor, type FundRow } from "./funds.js";
 import { fetchBtcEur, RateCache, type RateSnapshot } from "./rate.js";
 import { addSignature, broadcastRequest, createRequest, rejectRequest, requestById } from "./requests.js";
@@ -31,6 +32,8 @@ export interface AppDeps {
   now?: () => Date;
   logger?: boolean | { level?: string; stream?: { write: (message: string) => void } };
   pricesUrl?: string;
+  /** Regtest faucet and miner for the browser demo. Absent unless KOINON_DEMO=1. */
+  demo?: DemoWallet;
 }
 
 const writeLimit = { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } };
@@ -85,8 +88,43 @@ function buildServer(deps: AppDeps): FastifyInstance {
     } catch {
       bitcoind = false;
     }
-    return { ok: bitcoind, network: "regtest", bitcoind };
+    return { ok: bitcoind, network: "regtest", bitcoind, demo: deps.demo !== undefined };
   });
+
+  app.post("/v1/tx", writeLimit, async (request) => {
+    const body = z.object({ hex: z.string().regex(/^[0-9a-f]+$/i).min(20).max(200_000) }).safeParse(request.body);
+    if (!body.success) throw new KoinonError(ErrorCode.VALIDATION, "invalid transaction hex");
+    try {
+      const txid = await deps.bitcoin.sendRawTransaction(body.data.hex);
+      return { txid };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "the node rejected the transaction";
+      throw new KoinonError(ErrorCode.NODE_REJECTED, message);
+    }
+  });
+
+  if (deps.demo) {
+    const demo = deps.demo;
+    app.post("/v1/demo/faucet", writeLimit, async (request) => {
+      const body = z
+        .object({ address: z.string().min(10).max(120), sats: z.string().regex(/^[1-9]\d{0,6}$/) })
+        .safeParse(request.body);
+      if (!body.success) throw new KoinonError(ErrorCode.VALIDATION, "invalid faucet request");
+      const member = deps.db.prepare("SELECT 1 FROM members WHERE address = ?").get(body.data.address);
+      if (!member) throw new KoinonError(ErrorCode.VALIDATION, "the faucet only pays Koinon member addresses");
+      const sats = BigInt(body.data.sats);
+      if (sats > 2_000_000n) throw new KoinonError(ErrorCode.VALIDATION, "the faucet pays at most 2,000,000 sats");
+      const txid = await demo.pay(body.data.address, sats);
+      return { txid, network: "regtest", regtest_sats_have_no_value: true };
+    });
+
+    app.post("/v1/demo/mine", writeLimit, async (request) => {
+      const body = z.object({ blocks: z.number().int().min(1).max(20) }).safeParse(request.body);
+      if (!body.success) throw new KoinonError(ErrorCode.VALIDATION, "mine 1 to 20 blocks");
+      const height = await demo.mine(body.data.blocks);
+      return { height, network: "regtest" };
+    });
+  }
 
   app.get("/v1/rate", async (request) => {
     const rate = await rates.current();
