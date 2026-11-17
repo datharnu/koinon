@@ -185,6 +185,7 @@ sequenceDiagram
 | The server has no key | Keys are encrypted on the officer's machine. The process has no key file. | Fund creation and member add are unauthenticated. The fund id is the capability. Money still needs two signatures. |
 | Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and one seed word, not every word of every seed. |
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
+| A 5,000 F due is not eaten by the fee | At the 60,000 EUR fixture, 5,000 F is 12,705 sats. A P2WPKH→P2WSH landing is ~122 vbytes. At 2 sat/vB that is 244 sats, 96 F, paid by the member's wallet, not subtracted from the due. At 5 sat/vB, 240 F. | This is an association treasury, not a 500 F weekly tontine. A spend of one 2-of-3 input with change, at 2 sat/vB, is 600 sats (236 F) from `estimateVbytes(1, 2)` in `packages/core/src/coinselect.ts`. |
 
 Not claimed: mainnet, an audit, Lightning, Mobile Money, a spend a judge can broadcast from Vercel, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. Docker Compose has run only on GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764), all nine checks and the container log scan passed), not as a public host.
 

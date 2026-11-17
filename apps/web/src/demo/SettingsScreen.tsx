@@ -190,7 +190,10 @@ export function MembersScreen() {
       <ScreenHeader title={t("Membres", "Members")} onBack={nav.back} />
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         <p className="px-1 pb-3 text-[13px] leading-snug text-ink-2">
-          {t("Chaque membre a sa propre adresse de cotisation. Touchez pour la copier.", "Each member has their own dues address. Tap to copy it.")}
+          {t(
+            "Chaque membre a sa propre adresse de cotisation. Touchez pour la copier. Poser 5 000 F sur cette adresse coûte ~100 F de frais réseau à 2 sat/vB, payés par le membre, pas par la caisse.",
+            "Each member has their own dues address. Tap to copy it. Landing 5,000 F on this address costs ~100 F in network fees at 2 sat/vB, paid by the member, not by the fund.",
+          )}
         </p>
         {members.isPending ? (
           <Skeleton className="h-64 rounded-[22px]" />

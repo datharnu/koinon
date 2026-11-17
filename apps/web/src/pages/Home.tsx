@@ -239,8 +239,8 @@ function Problem() {
         eyebrow={t("Le problème", "The problem")}
         title={t("Aujourd'hui, la caisse n'a qu'une seule clé.", "Today, the fund has only one key.")}
         sub={t(
-          "Les associations sénégalaises collectent des cotisations chaque semaine. Presque toujours, une seule personne les garde, et une dispute suffit à casser la confiance.",
-          "Senegalese associations collect dues every week. Almost always, one person keeps them, and one dispute is enough to break trust.",
+          "Les associations sénégalaises collectent des cotisations, souvent une fois par mois. Presque toujours, une seule personne les garde, et une dispute suffit à casser la confiance.",
+          "Senegalese associations collect dues, often once a month. Almost always, one person keeps them, and one dispute is enough to break trust.",
         )}
       />
       <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -449,6 +449,11 @@ function Status() {
     [t("Clés chiffrées sur l'appareil, passkey ou code", "Keys encrypted on the device, passkey or code"), "live", "PBKDF2 310k + AES-256-GCM"],
     [t("Journal d'audit chaîné", "Hash-chained audit log"), "live", t("Vérifiable par tout membre", "Verifiable by any member")],
     [t("Prix BTC/EUR", "BTC/EUR price"), "sim", t("Valeur fixe de démo (60 000 €), affichée comme telle", "Fixed demo value (€60,000), labelled as such")],
+    [
+      t("Frais pour poser 5 000 F on-chain", "Fee to land 5,000 F on-chain"),
+      "live",
+      t("~100 F à 2 sat/vB, payés par le membre, pas prélevés sur la caisse", "~100 F at 2 sat/vB, paid by the member, not taken from the fund"),
+    ],
     [t("Trois responsables dans un seul navigateur", "Three officers in one browser"), "sim", t("Pour la démo. Un vrai fonds : une clé par téléphone", "For the demo. A real fund: one key per phone")],
     [t("Rejoindre un fonds depuis un 2ᵉ téléphone", "Join a fund from a 2nd phone"), "next", t("Invitation par QR", "QR invitation")],
     [t("Cotiser par Wave ou Orange Money", "Pay dues with Wave or Orange Money"), "next", t("Via un pont Mobile Money", "Through a Mobile Money bridge")],
@@ -503,6 +508,13 @@ function Faq() {
     [
       t("Pourquoi Bitcoin et pas un compte Wave partagé ?", "Why Bitcoin and not a shared Wave account?"),
       t("Un compte Wave a un seul titulaire et un seul code. Ici, la règle des deux signatures est vérifiée par le réseau lui-même, pas par une promesse.", "A Wave account has one holder and one code. Here, the two-signature rule is checked by the network itself, not by a promise."),
+    ],
+    [
+      t("5 000 F de cotisation, ce n'est pas trop petit pour Bitcoin ?", "Isn't a 5,000 F due too small for Bitcoin?"),
+      t(
+        "À 60 000 €/BTC, 5 000 F font 12 705 sats. Les poser sur l'adresse 2-sur-3 (~122 vbytes) coûte 244 sats à 2 sat/vB, soit 96 F — payés par le portefeuille du membre, pas retirés de la caisse. À 5 sat/vB, 240 F. C'est pourquoi Koinon est une caisse d'association (mensuelle, plutôt 10–50 000 F), pas une tontine hebdomadaire de 500 F. Lightning servirait ces petites parts ; on ne l'a pas ajouté, parce qu'un nœud qui reçoit Lightning tient les fonds.",
+        "At €60,000/BTC, 5,000 F is 12,705 sats. Landing it on the 2-of-3 address (~122 vbytes) costs 244 sats at 2 sat/vB, which is 96 F — paid by the member's wallet, not taken from the fund. At 5 sat/vB, 240 F. That is why Koinon is an association treasury (monthly, more like 10–50,000 F), not a 500 F weekly tontine. Lightning would serve those small shares; we did not add it, because a Lightning receiving node holds the coins.",
+      ),
     ],
     [
       t("Les sats de la démo ont-ils une valeur ?", "Do the demo sats have value?"),
