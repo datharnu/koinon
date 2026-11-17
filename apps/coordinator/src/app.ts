@@ -249,7 +249,7 @@ function buildServer(deps: AppDeps): FastifyInstance {
                   NULL AS fee, NULL AS request_id
            FROM utxos WHERE fund_id = ? AND change = 0
            UNION ALL
-           SELECT 'spend', txid, NULL, NULL, sats_out, NULL, block_height, seen_at, fee_sats, request_id
+           SELECT 'spend', txid, NULL, NULL, sats_out, xof_at_spend, block_height, seen_at, fee_sats, request_id
            FROM spends WHERE fund_id = ?
          ) AS ledger ORDER BY seen_at DESC LIMIT ? OFFSET ?`,
       )
@@ -265,7 +265,7 @@ function buildServer(deps: AppDeps): FastifyInstance {
         xof_at_receipt: row.xof,
         fee_sats: row.fee,
         request_id: row.request_id,
-        confirmations: tip - row.block_height + 1,
+        confirmations: row.block_height < 0 ? 0 : tip - row.block_height + 1,
         seen_at: row.seen_at,
       })),
       next_offset: more ? offset + limit : null,

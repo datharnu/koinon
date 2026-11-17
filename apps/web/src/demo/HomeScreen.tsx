@@ -25,7 +25,7 @@ export function HomeScreen({ role }: { role: OfficerRole }) {
 
   return (
     <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pb-4">
-      <div className="rounded-b-[32px] bg-brand-soft px-5 pb-6 pt-5">
+      <div className="rounded-b-[32px] bg-brand-soft px-5 pb-6 pt-[max(1.25rem,var(--demo-chrome))]">
         <div className="flex items-center gap-3">
           <Avatar name={me.name} tone={me.tone} size={42} ring />
           <div className="min-w-0 flex-1">

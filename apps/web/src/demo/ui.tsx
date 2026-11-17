@@ -32,7 +32,7 @@ export function useNav(): Nav {
 /** Title row for a pushed screen. */
 export function ScreenHeader({ title, onBack, right, tone = "plain" }: { title: string; onBack?: () => void; right?: ReactNode; tone?: "plain" | "brand" }) {
   return (
-    <header className={`flex shrink-0 items-center gap-2 px-3 pb-3 pt-4 ${tone === "brand" ? "bg-brand-soft" : ""}`}>
+    <header className={`flex shrink-0 items-center gap-2 px-3 pb-3 pt-[max(1rem,var(--demo-chrome))] ${tone === "brand" ? "bg-brand-soft" : ""}`}>
       {onBack ? (
         <button type="button" onClick={onBack} aria-label="Retour" className="press grid size-10 place-items-center rounded-full text-ink hover:bg-card">
           <IconChevronLeft size={22} />
@@ -49,7 +49,7 @@ export function ScreenHeader({ title, onBack, right, tone = "plain" }: { title: 
 /** Big title for tab roots, like a native app. */
 export function LargeTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-6">
+    <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-[max(1.5rem,var(--demo-chrome))]">
       <h2 className="text-[26px] font-bold">{children}</h2>
       {right}
     </div>

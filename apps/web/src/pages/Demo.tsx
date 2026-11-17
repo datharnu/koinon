@@ -94,9 +94,9 @@ function Onboarding({ children }: { children: ReactNode }) {
     return <div className="flex h-dvh flex-col bg-surface">{children}</div>;
   }
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <StageBar />
-      <main className="flex flex-1 items-center justify-center px-4 pb-10 pt-2">
+      <main className="flex min-h-0 flex-1 items-center justify-center px-4 py-6">
         <PhoneFrame>{children}</PhoneFrame>
       </main>
     </div>
@@ -404,8 +404,8 @@ function Stage() {
   const [network, setNetwork] = useState(false);
   const [holder, setHolder] = useState<OfficerRole>("O1");
 
-  const switcher = (
-    <div role="tablist" aria-label={t("Qui tient le téléphone", "Who holds the phone")} className="flex h-10 items-center gap-1 rounded-full bg-card p-1">
+  const switcher = (inset = false) => (
+    <div role="tablist" aria-label={t("Qui tient le téléphone", "Who holds the phone")} className={inset ? "flex h-9 min-w-0 flex-1 items-center gap-0.5" : "flex h-10 items-center gap-1 rounded-full bg-card p-1"}>
       {STAGE_ROLES.map((role) => (
         <button
           key={role}
@@ -413,10 +413,10 @@ function Stage() {
           role="tab"
           aria-selected={holder === role}
           onClick={() => setHolder(role)}
-          className={`press flex h-8 items-center gap-1.5 rounded-full pl-1 pr-3 text-[13px] font-semibold transition-colors ${holder === role ? "bg-surface text-ink shadow-[0_1px_4px_-1px_rgb(0_0_0/0.15)]" : "text-ink-3"}`}
+          className={`press flex h-8 items-center gap-1.5 rounded-full text-[13px] font-semibold transition-colors ${inset ? "min-w-0 flex-1 justify-center px-2" : "pl-1 pr-3"} ${holder === role ? "bg-surface text-ink shadow-[0_1px_4px_-1px_rgb(0_0_0/0.15)]" : "text-ink-3"}`}
         >
           <Avatar name={PEOPLE[role].name} tone={PEOPLE[role].tone} size={24} />
-          {PEOPLE[role].first}
+          <span className="truncate">{PEOPLE[role].first}</span>
         </button>
       ))}
     </div>
@@ -424,13 +424,13 @@ function Stage() {
 
   if (wide) {
     return (
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex h-dvh flex-col overflow-hidden">
         <StageBar>
           <ButtonLink href="/" variant="ghost" size="sm" icon={<IconX size={16} />}>
             {t("Quitter", "Exit")}
           </ButtonLink>
         </StageBar>
-        <main className="flex flex-1 items-start justify-center gap-14 px-6 pb-28 pt-2">
+        <main className="flex min-h-0 flex-1 items-center justify-center gap-14 px-6 py-2">
           {STAGE_ROLES.map((role) => (
             <PhoneFrame key={role} caption={<Caption role={role} />}>
               <PhoneApp role={role} initial={role === "O2" ? "requests" : "home"} />
@@ -445,11 +445,11 @@ function Stage() {
 
   if (framed) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <StageBar>{switcher}</StageBar>
-        <main className="flex flex-1 items-start justify-center px-4 pb-28 pt-2">
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <StageBar>{switcher()}</StageBar>
+        <main className="flex min-h-0 flex-1 items-center justify-center px-4 py-2">
           {STAGE_ROLES.map((role) => (
-            <div key={role} style={{ display: holder === role ? "contents" : "none" }}>
+            <div key={role} className="h-full" style={{ display: holder === role ? "contents" : "none" }}>
               <PhoneFrame caption={<Caption role={role} />}>
                 <PhoneApp role={role} initial={role === "O2" ? "requests" : "home"} />
               </PhoneFrame>
@@ -463,15 +463,17 @@ function Stage() {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-surface">
-      <header className="flex shrink-0 items-center gap-2 px-3 pb-1 pt-[max(env(safe-area-inset-top),10px)]">
-        <Link href="/" aria-label={t("Accueil Koinon", "Koinon home")}>
-          <Logo size={32} withName={false} />
-        </Link>
-        <div className="flex flex-1 justify-center">{switcher}</div>
-        <button type="button" onClick={() => setNetwork(true)} aria-label={t("Réseau de test", "Test network")} className="press grid size-10 place-items-center rounded-full bg-card text-ink">
-          <IconCube size={19} />
-        </button>
+    <div data-demo-chrome className="relative flex h-dvh flex-col bg-surface">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-[max(env(safe-area-inset-top),8px)]">
+        <div className="pointer-events-auto flex h-11 w-full items-center gap-1 rounded-full bg-surface/80 px-1.5 shadow-[0_10px_28px_-16px_rgb(20_14_60/0.4)] ring-1 ring-line backdrop-blur-md">
+          <Link href="/" aria-label={t("Accueil Koinon", "Koinon home")} className="grid size-9 shrink-0 place-items-center">
+            <Logo size={28} withName={false} />
+          </Link>
+          {switcher(true)}
+          <button type="button" onClick={() => setNetwork(true)} aria-label={t("Réseau de test", "Test network")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink hover:bg-card">
+            <IconCube size={18} />
+          </button>
+        </div>
       </header>
       {STAGE_ROLES.map((role) => (
         <div key={role} style={{ display: holder === role ? "contents" : "none" }}>

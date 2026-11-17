@@ -38,7 +38,7 @@ function addressOf(byte: number): string {
   return address;
 }
 
-function chain(blocks: string[], seen: string[]): BitcoinClient {
+function chain(blocks: string[], seen: string[], mempool: string[] = []): BitcoinClient {
   return {
     async getBlockCount() {
       return blocks.length - 1;
@@ -54,6 +54,9 @@ function chain(blocks: string[], seen: string[]): BitcoinClient {
     async sendRawTransaction(hex) {
       seen.push(hex);
       return Transaction.fromHex(hex).getId();
+    },
+    async getMempoolHex() {
+      return [...mempool];
     },
   };
 }
@@ -72,6 +75,10 @@ function payBlock(address: string, sats: bigint): string {
   block.nonce = 1;
   block.transactions = [tx];
   return block.toHex();
+}
+
+function hashFromTxid(txid: string): Uint8Array {
+  return Uint8Array.from(Buffer.from(txid, "hex").reverse());
 }
 
 function spendBlock(hex: string): string {
@@ -328,6 +335,99 @@ describe("coordinator", () => {
     );
     expect(refused.status).toBe(503);
     expect(refused.json.code).toBe("RATE_UNAVAILABLE");
+    await app.close();
+  });
+
+  it("lists a recovery spend with no request on the ledger", async () => {
+    const blocks = [Buffer.alloc(80).toString("hex")];
+    const db = openDatabase(":memory:");
+    const app = buildApp({
+      db,
+      bitcoin: chain(blocks, []),
+      fetchEur: async () => "60000",
+      now: () => NOW,
+      logger: false,
+    });
+    const created = await call(app, "POST", "/v1/funds", fundBody());
+    const fundId = created.json.id as string;
+    const member = await call(app, "POST", `/v1/funds/${fundId}/members`, { pseudonym: "Awa" });
+    blocks.push(payBlock(member.json.address as string, 100_000_000n));
+
+    const before = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
+    const contribution = (before.json.entries as { kind: string; txid: string; vout: number; xof_at_receipt: string }[]).find(
+      (entry) => entry.kind === "contribution",
+    );
+    expect(contribution).toBeTruthy();
+
+    const spend = new Transaction();
+    spend.version = 2;
+    spend.addInput(hashFromTxid(contribution!.txid), contribution!.vout);
+    spend.addOutput(outputScript(addressOf(0x55), "regtest"), 99_000_000n);
+    blocks.push(spendBlock(spend.toHex()));
+
+    const ledger = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
+    const entries = ledger.json.entries as {
+      kind: string;
+      request_id: string | null;
+      txid: string;
+      sats: string;
+      xof_at_receipt: string | null;
+      confirmations: number;
+    }[];
+    const recovery = entries.find((entry) => entry.kind === "spend");
+    expect(recovery).toMatchObject({
+      txid: spend.getId(),
+      request_id: null,
+      sats: "99000000",
+      xof_at_receipt: contribution!.xof_at_receipt,
+      confirmations: 1,
+    });
+    expect(entries.some((entry) => entry.kind === "contribution")).toBe(true);
+
+    const fund = await call(app, "GET", `/v1/funds/${fundId}`);
+    expect(fund.json.balance_sats).toBe("0");
+    await app.close();
+  });
+
+  it("lists an unconfirmed recovery from the mempool with the due's francs", async () => {
+    const blocks = [Buffer.alloc(80).toString("hex")];
+    const mempool: string[] = [];
+    const db = openDatabase(":memory:");
+    const app = buildApp({
+      db,
+      bitcoin: chain(blocks, [], mempool),
+      fetchEur: async () => "60000",
+      now: () => NOW,
+      logger: false,
+    });
+    const created = await call(app, "POST", "/v1/funds", fundBody());
+    const fundId = created.json.id as string;
+    const member = await call(app, "POST", `/v1/funds/${fundId}/members`, { pseudonym: "Awa" });
+    blocks.push(payBlock(member.json.address as string, 100_000_000n));
+
+    const before = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
+    const contribution = (before.json.entries as { kind: string; txid: string; vout: number; xof_at_receipt: string }[]).find(
+      (entry) => entry.kind === "contribution",
+    );
+    expect(contribution).toBeTruthy();
+
+    const spend = new Transaction();
+    spend.version = 2;
+    spend.addInput(hashFromTxid(contribution!.txid), contribution!.vout);
+    spend.addOutput(outputScript(addressOf(0x55), "regtest"), 99_000_000n);
+    mempool.push(spend.toHex());
+
+    const pending = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
+    const recovery = (pending.json.entries as { kind: string; confirmations: number; xof_at_receipt: string | null; request_id: string | null }[]).find(
+      (entry) => entry.kind === "spend",
+    );
+    expect(recovery).toMatchObject({
+      request_id: null,
+      confirmations: 0,
+      xof_at_receipt: contribution!.xof_at_receipt,
+    });
+    const fund = await call(app, "GET", `/v1/funds/${fundId}`);
+    expect(fund.json.balance_sats).toBe("0");
     await app.close();
   });
 });

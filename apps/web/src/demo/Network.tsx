@@ -69,8 +69,8 @@ export function FloatingToolbar({ onCheat }: { onCheat: () => void }) {
   const fund = useFund(demo.config.fundId);
   const network = useNetwork();
   return (
-    <div role="toolbar" aria-label={t("Réseau de test", "Test network")} className="fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">
-      <div className="flex items-center gap-1.5 rounded-full bg-surface p-1.5 shadow-[0_18px_50px_-18px_rgb(20_14_60/0.45)] ring-1 ring-line">
+    <div role="toolbar" aria-label={t("Réseau de test", "Test network")} className="flex shrink-0 justify-center px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-1">
+      <div className="flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full bg-surface p-1.5 shadow-[0_18px_50px_-18px_rgb(20_14_60/0.45)] ring-1 ring-line">
         <span className="flex h-10 items-center gap-2 rounded-full bg-card px-4 text-[13px] font-semibold text-ink-2" title={t("Hauteur de la chaîne regtest", "Regtest chain height")}>
           <IconCube size={16} />
           <span className="tabular">{fund.data ? t(`Bloc ${fund.data.chain_tip}`, `Block ${fund.data.chain_tip}`) : "…"}</span>
@@ -207,7 +207,11 @@ function CheatList() {
       const { request } = await treasurerRequest(progress);
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
       const answer = await spendAlone({ config: demo.config, role: "O1", secret: demo.secrets.O1, request });
-      return nodeVerdict(answer, t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."));
+      return nodeVerdict(
+        answer,
+        t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."),
+        t("Bitcoin Core a accepté la transaction.", "Bitcoin Core accepted the transaction."),
+      );
     });
 
   const swap = () =>
@@ -238,7 +242,11 @@ function CheatList() {
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
       const answer = await recoverOne({ config: demo.config, officer: demo.secrets.O1, assembly: demo.secrets.K });
       if (answer.kind === "empty") return { kind: "error", title: t("Aucune pièce à récupérer", "No coin to recover"), detail: "EMPTY" };
-      const verdict = nodeVerdict(answer, t(`Trop tôt : Bitcoin Core attend ${demo.config.csvBlocks} blocs après la cotisation.`, `Too early: Bitcoin Core waits ${demo.config.csvBlocks} blocks after the due.`));
+      const verdict = nodeVerdict(
+        answer,
+        t(`Trop tôt : Bitcoin Core attend ${demo.config.csvBlocks} blocs après la cotisation.`, `Too early: Bitcoin Core waits ${demo.config.csvBlocks} blocks after the due.`),
+        t("Bitcoin Core a accepté la transaction.", "Bitcoin Core accepted the transaction."),
+      );
       return verdict.kind === "blocked" ? { ...verdict, next: "mine-and-retry" } : verdict;
     });
 
@@ -249,8 +257,10 @@ function CheatList() {
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
       const answer = await recoverOne({ config: demo.config, officer: demo.secrets.O1, assembly: demo.secrets.K });
       if (answer.kind === "empty") return { kind: "error", title: t("Aucune pièce à récupérer", "No coin to recover"), detail: "EMPTY" };
-      if (answer.kind === "accepted")
+      if (answer.kind === "accepted") {
+        await confirmSpend(demo.config.fundId, answer.txid, progress, t);
         return { kind: "intended", title: t("Après le délai, Ibou et l'assemblée récupèrent la cotisation. C'est voulu : la porte de secours s'ouvre seulement maintenant.", "After the delay, Ibou and the assembly recover the due. That is intended: the emergency exit opens only now."), detail: answer.txid };
+      }
       return { kind: "error", title: t("Toujours refusé", "Still refused"), detail: answer.message };
     });
 
@@ -340,18 +350,34 @@ function VerdictView({ verdict }: { verdict: Verdict }) {
   );
 }
 
-function nodeVerdict(answer: NodeAnswer, refusedTitle: string): Verdict {
+function nodeVerdict(answer: NodeAnswer, refusedTitle: string, acceptedTitle: string): Verdict {
   if (answer.kind === "refused") return { kind: "blocked", title: refusedTitle, detail: answer.message };
-  return { kind: "allowed", title: "bitcoind accepted the transaction.", detail: answer.txid };
+  return { kind: "allowed", title: acceptedTitle, detail: answer.txid };
 }
 
 /** The coordinator learns about new blocks by polling; give it a moment. */
 async function waitForLedger(fundId: string): Promise<void> {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const { entries } = await endpoints.ledger(fundId);
-    if (entries.every((entry) => entry.confirmations > 0)) return;
+    if (entries.filter((entry) => entry.kind === "contribution").every((entry) => entry.confirmations > 0)) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
+}
+
+/** Recovery is only in the activity list after a mined block. Mine that block in the demo. */
+async function confirmSpend(fundId: string, txid: string, progress: (label: string) => void, t: (fr: string, en: string) => string): Promise<boolean> {
+  progress(t("Confirmation sur la chaîne…", "Confirming on the chain…"));
+  try {
+    await mine(1);
+  } catch {
+    return false;
+  }
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const { entries } = await endpoints.ledger(fundId);
+    if (entries.some((entry) => entry.kind === "spend" && entry.txid === txid)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
 }
 
 export function RecoveryScreen({ role }: { role: "O1" | "O2" | "O3" }) {
@@ -368,6 +394,8 @@ export function RecoveryScreen({ role }: { role: "O1" | "O2" | "O3" }) {
     setResult(null);
     try {
       const answer = await recoverOne({ config: demo.config, officer: demo.secrets[role], assembly: demo.secrets.K });
+      let seen = false;
+      if (answer.kind === "accepted") seen = await confirmSpend(demo.config.fundId, answer.txid, (label) => setBusy(label), t);
       const verdict: Verdict =
         answer.kind === "empty"
           ? { kind: "error", title: t("Aucune pièce de cotisation à récupérer.", "No contribution coin to recover."), detail: "EMPTY" }
@@ -375,7 +403,14 @@ export function RecoveryScreen({ role }: { role: "O1" | "O2" | "O3" }) {
             ? { kind: "blocked", title: t(`Trop tôt : Bitcoin Core attend ${demo.config.csvBlocks} blocs après la cotisation la plus récente.`, `Too early: Bitcoin Core waits ${demo.config.csvBlocks} blocks after the newest due.`), detail: answer.message }
             : { kind: "intended", title: t("Accepté après le délai. La cotisation part vers l'adresse de l'assemblée.", "Accepted after the delay. The due goes to the assembly's address."), detail: answer.txid };
       setResult(verdict);
-      if (answer.kind === "accepted") toast({ tone: "good", title: t("Récupération envoyée", "Recovery sent"), detail: answer.txid });
+      if (answer.kind === "accepted") {
+        toast({
+          tone: "good",
+          title: seen ? t("Récupération confirmée", "Recovery confirmed") : t("Récupération envoyée", "Recovery sent"),
+          body: seen ? t("Elle apparaît dans l'activité.", "It shows up in activity.") : t("Minez un bloc pour la voir dans l'activité.", "Mine a block to see it in activity."),
+          detail: answer.txid,
+        });
+      }
     } catch (error) {
       setResult({ kind: "error", title: t("Pas de réponse claire", "No clear answer"), detail: errorCode(error) });
     } finally {
