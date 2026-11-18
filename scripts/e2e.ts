@@ -30,7 +30,11 @@ async function main(): Promise<void> {
   };
   const treasurer = await secret(home, "O1");
   const secretary = await secret(home, "O2");
-  const word = treasurer.mnemonic.split(" ")[0] ?? "";
+  const parts = treasurer.mnemonic.split(" ").filter((part) => part.length > 0);
+  // Two adjacent words. One BIP39 word is also ordinary English, and the old
+  // substring match reported a seed hit on container logs that never printed a
+  // seed. CI run 44310515954, 18 Nov 2026.
+  const word = parts.length >= 2 ? `${parts[0]} ${parts[1]}` : (parts[0] ?? "");
   const wordFile = process.env.KOINON_SCAN_WORD;
   if (wordFile) writeScanWord(wordFile, word);
   console.log("network: regtest");
@@ -238,8 +242,12 @@ function leak(text: string, word: string): string | null {
 }
 
 function leaksWord(text: string, word: string): boolean {
-  if (!/^[0-9a-f]+$/i.test(word)) return text.includes(word);
-  return new RegExp(`(^|[^0-9a-fA-F])${word}([^0-9a-fA-F]|$)`).test(text);
+  if (word.includes(" ")) return text.includes(word);
+  // Letter words use letter boundaries. The old hex-boundary test treated "act"
+  // as a hit inside "transaction", because "s" is not a hex digit.
+  if (/^[a-z]+$/i.test(word)) return new RegExp(`(^|[^A-Za-z])${word}([^A-Za-z]|$)`).test(text);
+  if (/^[0-9a-f]+$/i.test(word)) return new RegExp(`(^|[^0-9a-fA-F])${word}([^0-9a-fA-F]|$)`).test(text);
+  return text.includes(word);
 }
 
 // The container runs as root but the host log scan runs as the bind mount's owner (the CI runner user),

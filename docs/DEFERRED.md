@@ -88,6 +88,8 @@ Not proven on this machine: `docker compose up` (Docker is not installed here).
 
 The previous run failed only at the log scan: the e2e container runs as root and wrote `.e2e/word` with mode 0600, so the runner user could not read it. `scripts/e2e.ts` now hands the file to the owner of the mounted folder, still 0600.
 
+[Run 44310515954](https://github.com/datharnu/koinon/actions/runs/44310515954), 18 Nov 2026, on commit `1844256`, failed at the same step with `log scan hit: seed word`. The job does not print the word or the line. The scan matched the first word of the treasurer mnemonic as a substring. A word made only of the letters a–f used hex boundaries, so `act` counts as a hit inside `transaction` and `add` inside `address`. That commit does not print a mnemonic. The scan now looks for two adjacent words of that mnemonic.
+
 ## Docs, written 17 Nov 2026
 
 `README.md`, `docs/THREAT_MODEL.md`, and `docs/UI_CONTRACT.md` are written. They describe the runs above. They do not add a run of compose, of GitHub Actions, or of a live mempool price.

@@ -73,6 +73,20 @@ The rubric is on [the Devpost page](https://dakar-bitcoin-hack-2026.devpost.com/
 
 The film is [Watch the film (2:15)](docs/media/koinon-demo.mp4). It was recorded 18 Nov 2026 from this app. The voice is a neural draft, not a person. The shot list is [docs/VIDEO.md](docs/VIDEO.md).
 
+<a id="looks"></a>
+
+## What the demo looks like
+
+The homepage says "Nobody empties the fund alone." Main button: "Try the demo."
+
+- Ibou taps Sign and send on 15,000 F. Coumba sees recipient, amount, and locked rate, then Approve. After one block: "Paid. The transaction is in a block."
+- A swapped payee stops before signing: `PSBT_MISMATCH`, "the transaction does not pay the requested recipient."
+- Invite link for WhatsApp. No account and no key. The sheet says "Checked on this phone from Bitcoin bytes, not from the server's database," and names Ibou + Coumba only when the link fingerprint matches.
+- French and English switch in the header. Playwright passed at 390×844 (39.2s) and 360×740 (39.8s), headless Chromium on this Mac, not a handset.
+- Signing code loads only on `/app` (370,383 bytes). `/` was 109,054 bytes, `/fonds/:id` 140,460, unknown fund. `/` not measured again.
+
+Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
+
 <a id="demo"></a>
 
 ## Demo
@@ -197,8 +211,8 @@ A shared Wave or Orange Money account. A server that can approve a spend. Lightn
 | Regtest | bitcoind. The thing that accepts or refuses. | [scripts/regtest.ts](scripts/regtest.ts) |
 
 <p align="center">
-  <img src="docs/diagrams/koinon-architecture.svg" width="100%" alt="The big picture. Treasurer, secretary, member and the assembly key, each on a phone. The request is a NIP-17 gift wrap with no PSBT, carried by a relay that accepts any publisher. A watch-only coordinator on 102-68-84-31.sslip.io has no private key. The price on screen is a 60,000 EUR fixture. bitcoind, Bitcoin Core 32.1, regtest, holds a P2WSH 2-of-3 plus CSV. Two signatures were accepted. One signature was NULLFAIL. Recovery before the delay was non-BIP68-final. N is 10 on regtest. The member's phone checks the raw transaction and does not run bitcoind's script flags." />
-  <br/><sub>The big picture. The same path, as a sequence, is below. Regtest. Sats have no value. About 4,320 blocks was not used.</sub>
+  <a href="docs/diagrams/koinon-architecture.excalidraw"><img src="docs/diagrams/koinon-architecture.svg" alt="The big picture. The treasurer signs on the phone; the key stays there. The secretary rebuilds the transaction and refuses a changed payee with PSBT_MISMATCH before signing. The request is a NIP-17 gift wrap with no PSBT, carried by a relay that accepts any publisher. A watch-only coordinator on 102-68-84-31.sslip.io has no private key. The screen shows CFA francs from a 60,000 EUR fixture. It broadcasts to bitcoind, Bitcoin Core 32.1, local regtest: P2WSH, 2 of 3, plus CSV. On 17 Nov 2026, pnpm kill-test: two signatures accepted, one signature NULLFAIL, path B non-BIP68-final before 10 blocks, then one officer and the assembly accepted after the delay. N is 10. About 4,320 was not used. The member's phone checks the raw transaction. It does not run bitcoind's script flags and does not count blocks. Two officers who agree can spend. Sats have no value." width="100%" /></a>
+  <br/><sub>The big picture. Source: <a href="docs/diagrams/koinon-architecture.excalidraw"><code>docs/diagrams/koinon-architecture.excalidraw</code></a> (open it at excalidraw.com). The same path, as a sequence, is below. Regtest. Sats have no value. About 4,320 blocks was not used.</sub>
 </p>
 
 ```mermaid
@@ -244,7 +258,7 @@ sequenceDiagram
 | An officer does not sign a swapped payment | `verifySpend` throws before `signVerifiedSpend` adds a signature | The officer must run that check. A patched client can ignore it. The script still requires two keys. |
 | Recovery cannot happen early | bitcoind returned `non-BIP68-final` | Only for the `N` the fund was created with. Regtest uses 10. |
 | The server has no key | Keys are encrypted on the officer's machine. The process has no key file. | Fund creation and member add are unauthenticated. The fund id is the capability. Money still needs two signatures. |
-| Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and one seed word, not every word of every seed. |
+| Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and two adjacent words of one seed, not every word of every seed. One word alone is not a hit. |
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
 | A 5,000 F due is not eaten by the fee | At the 60,000 EUR fixture, 5,000 F is 12,705 sats. A P2WPKH→P2WSH landing is ~122 vbytes. At 2 sat/vB that is 244 sats, 96 F, paid by the member's wallet, not subtracted from the due. At 5 sat/vB, 240 F. | This is an association treasury, not a 500 F weekly tontine. A spend of one 2-of-3 input with change, at 2 sat/vB, is 600 sats (236 F) from `estimateVbytes(1, 2)` in `packages/core/src/coinselect.ts`. |
 

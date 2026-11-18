@@ -23,12 +23,30 @@ if [ -n "$wordfile" ] && [ -f "$wordfile" ] && [ ! -r "$wordfile" ]; then
   exit 1
 elif [ -n "$wordfile" ] && [ -f "$wordfile" ]; then
   word=$(cat "$wordfile")
-  if printf '%s' "$word" | grep -q '^[0-9a-fA-F][0-9a-fA-F]*$'; then
+  # A single BIP39 word was matched as a raw substring. A word made only of the
+  # letters a-f used hex boundaries, so "act" hit "transaction" and "add" hit
+  # "address". CI run 44310515954, 18 Nov 2026, printed "log scan hit: seed word"
+  # and did not print the word. The file now holds two adjacent words. One word
+  # still matches only as a whole word, not inside another word.
+  if [ -z "$word" ]; then
+    echo "log scan: seed word file is empty"
+    fail=1
+  elif printf '%s' "$word" | grep -q ' '; then
+    if grep -q -F -- "$word" "$file"; then
+      echo "log scan hit: seed word"
+      fail=1
+    fi
+  elif printf '%s' "$word" | grep -q '^[A-Za-z][A-Za-z]*$'; then
+    if grep -E "(^|[^A-Za-z])${word}([^A-Za-z]|$)" "$file" >/dev/null; then
+      echo "log scan hit: seed word"
+      fail=1
+    fi
+  elif printf '%s' "$word" | grep -q '^[0-9a-fA-F][0-9a-fA-F]*$'; then
     if grep -E "(^|[^0-9a-fA-F])${word}([^0-9a-fA-F]|$)" "$file" >/dev/null; then
       echo "log scan hit: seed word"
       fail=1
     fi
-  elif grep -q -F "$word" "$file"; then
+  elif grep -q -F -- "$word" "$file"; then
     echo "log scan hit: seed word"
     fail=1
   fi
