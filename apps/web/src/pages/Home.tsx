@@ -1,10 +1,23 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { PEOPLE } from "../lib/people";
 import { usePrefs, useT } from "../lib/prefs";
 import { Avatar, Chip } from "../ui/avatar";
 import { ButtonLink } from "../ui/button";
-import { IconArrowRight, IconCheck, IconChevronDown, IconClock, IconEye, IconLifebuoy, IconSend, IconShield, IconUserPlus, IconUsers, Logo } from "../ui/icons";
-import { REPO_URL, SiteFooter, SiteNav } from "../ui/site";
+import { IconArrowRight, IconCheck, IconClock, IconShield, IconX, Logo } from "../ui/icons";
+import { LangPill, LangToggle, ThemeToggle } from "../ui/toggles";
+import { REPO_URL, SiteFooter } from "../ui/site";
+
+/** From the regtest demo at the 60,000 EUR fixture. Example, not a market price. */
+const REQUEST_XOF = 15_000;
+// This used to be 15 × 2,541 = 38,115 sats. The app converts the whole amount at the rate and
+// rounds once, so the same request locks 38,113 sats. Copy the app's number; do not multiply.
+const requestSats = 38_113;
+
+const FINDEX = "https://microdata.worldbank.org/catalog/7971/variable/F1/V64?name=fin17c";
+const EFA = "https://efa.africa/etude-tontine-en-chiffres";
+const BCEAO =
+  "https://www.bceao.int/sites/default/files/2026-03/Rapport%20annuel%20sur%20les%20services%20financiers%20num%C3%A9riques%20dans%20l%27UEMOA%20-%202024.pdf";
+const CALEBASSE = "https://www.leral.net/Plus-de-2-500-calebasses-de-solidarite-denombrees-a-travers-le-pays_a377683.html";
 
 export function Home() {
   const t = useT();
@@ -13,15 +26,13 @@ export function Home() {
   }, [t]);
   return (
     <>
-      <SiteNav />
+      <HomeNav />
       <main>
         <Hero />
         <Problem />
-        <Features />
-        <HowItWorks />
-        <Refusals />
-        <Status />
-        <Faq />
+        <Questions />
+        <Proof />
+        <Limits />
         <Closing />
       </main>
       <SiteFooter />
@@ -29,514 +40,584 @@ export function Home() {
   );
 }
 
+function num(value: number, lang: "fr" | "en"): string {
+  return new Intl.NumberFormat(lang === "fr" ? "fr-FR" : "en-US").format(value);
+}
+
+function useNum() {
+  const { lang } = usePrefs();
+  return (value: number) => num(value, lang);
+}
+
+function HomeNav() {
+  const t = useT();
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+  const items = [
+    { href: "#probleme", label: t("Le problème", "The problem") },
+    { href: "#questions", label: t("Comment ça marche", "How it works") },
+    { href: "#preuve", label: t("La preuve", "The proof") },
+    { href: "#limites", label: t("Limites", "Limits") },
+  ];
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <header
+      className={`fixed inset-x-0 top-0 z-40 border-b transition-[background-color,border-color] duration-200 ${
+        scrolled || open ? "border-line bg-surface/95 backdrop-blur-xl" : "border-transparent bg-transparent"
+      }`}
+    >
+      <nav className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-2 px-4 sm:px-5">
+        <a href="#top" aria-label={t("Accueil Koinon", "Koinon home")} className="shrink-0">
+          <Logo withName />
+        </a>
+        <div className="mx-auto hidden items-center gap-0.5 lg:flex">
+          {items.map((item) => (
+            <a key={item.href} href={item.href} className="rounded-full px-3.5 py-2 text-[14px] font-medium text-ink-2 transition-colors hover:bg-card hover:text-ink">
+              {item.label}
+            </a>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <span className="max-sm:hidden">
+            <LangToggle />
+          </span>
+          <span className="sm:hidden">
+            <LangPill />
+          </span>
+          <ThemeToggle />
+          <ButtonLink href="/app" size="sm" className="ml-0.5 max-[370px]:px-3">
+            {t("Ouvrir l'app", "Open the app")}
+          </ButtonLink>
+          <button
+            ref={buttonRef}
+            type="button"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-ink hover:bg-card lg:hidden"
+            aria-expanded={open}
+            aria-controls={menuId}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <span className="sr-only">{open ? t("Fermer le menu", "Close the menu") : t("Ouvrir le menu", "Open the menu")}</span>
+            {open ? <IconX size={18} /> : <MenuMark />}
+          </button>
+        </div>
+      </nav>
+      {open ? (
+        <div id={menuId} className="border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+          <div className="mb-2 sm:hidden">
+            <LangToggle />
+          </div>
+          {items.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="flex min-h-11 items-center rounded-xl px-2 text-[15.5px] font-medium text-ink hover:bg-card"
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function MenuMark() {
+  return (
+    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M2 3.5h14M2 10.5h14" />
+    </svg>
+  );
+}
+
 function Section({ id, children, className = "" }: { id?: string; children: ReactNode; className?: string }) {
   return (
-    <section id={id} className={`mx-auto w-full max-w-[1160px] scroll-mt-24 px-5 py-20 sm:py-28 ${className}`}>
+    <section id={id} className={`mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-16 sm:px-5 sm:py-24 ${className}`}>
       {children}
     </section>
   );
 }
 
-function Heading({ eyebrow, title, sub, center }: { eyebrow: string; title: ReactNode; sub?: string; center?: boolean }) {
-  return (
-    <div className={`flex max-w-[720px] flex-col gap-4 ${center ? "mx-auto items-center text-center" : ""}`}>
-      <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-brand">{eyebrow}</span>
-      <h2 className="text-[34px] font-bold leading-[1.08] tracking-[-0.03em] sm:text-[46px]">{title}</h2>
-      {sub ? <p className="text-[17px] leading-relaxed text-ink-2">{sub}</p> : null}
-    </div>
-  );
+function Kicker({ children }: { children: ReactNode }) {
+  return <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-brand">{children}</p>;
 }
 
-/* ---------------------------------------------------------------- hero */
+function Title({ children }: { children: ReactNode }) {
+  return <h2 className="mt-3 max-w-[20ch] text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] sm:text-[46px]">{children}</h2>;
+}
+
+/* ---------- Hero: one claim, one real screen ---------- */
 
 function Hero() {
   const t = useT();
   return (
-    <section className="relative overflow-hidden pt-32 sm:pt-40">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[900px] bg-[radial-gradient(60%_50%_at_50%_62%,color-mix(in_srgb,var(--color-brand)_22%,transparent),transparent_70%)]" />
-      <div className="relative mx-auto flex max-w-[1160px] flex-col items-center px-5 text-center">
-        <span className="fade-up inline-flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3.5 text-[13px] font-medium text-ink-2 shadow-[0_4px_16px_-8px_rgb(0_0_0/0.2)] ring-1 ring-line">
-          <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[12px] font-bold text-brand-ink">Dakar Bitcoin Hack 2026</span>
-          {t("Démo regtest en ligne", "Live regtest demo")}
-        </span>
-        <h1 className="fade-up mt-6 max-w-[880px] text-[44px] font-bold leading-[1.02] tracking-[-0.04em] [animation-delay:60ms] sm:text-[72px]">
-          {t("La caisse de l'association s'ouvre avec ", "The association's fund opens with ")}
-          <span className="text-brand">{t("deux clés.", "two keys.")}</span>
-        </h1>
-        <p className="fade-up mt-6 max-w-[620px] text-[18px] leading-relaxed text-ink-2 [animation-delay:120ms]">
-          {t(
-            "Un fonds Bitcoin partagé pour un dahira, un GIE ou un club. Le trésorier ne peut pas dépenser seul : deux responsables sur trois signent depuis leur téléphone, et chaque membre voit chaque franc.",
-            "A shared Bitcoin fund for a dahira, a GIE or a club. The treasurer cannot spend alone: two of three officers sign from their phone, and every member sees every franc.",
-          )}
-        </p>
-        <div className="fade-up mt-8 flex flex-wrap items-center justify-center gap-3 [animation-delay:180ms]">
-          <ButtonLink href="/app" size="lg">
-            {t("Ouvrir l'app", "Open the app")}
-            <IconArrowRight size={18} />
-          </ButtonLink>
-          <ButtonLink href="#refus" variant="secondary" size="lg" className="bg-surface ring-1 ring-line">
-            {t("Voir ce que Bitcoin refuse", "See what Bitcoin refuses")}
-          </ButtonLink>
-        </div>
-
-        <div className="relative mt-16 flex h-[520px] w-full justify-center sm:mt-20 sm:h-[600px]">
-          <div className="absolute left-1/2 top-6 hidden -translate-x-[96%] -rotate-[7deg] sm:block">
-            <MockPhone>
-              <MockHome />
-            </MockPhone>
+    <section id="top" className="home-rise relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(60%_60%_at_70%_30%,color-mix(in_oklab,var(--color-brand)_14%,transparent),transparent)]" />
+      <div className="relative mx-auto grid w-full max-w-[1120px] items-center gap-12 px-4 pb-16 pt-28 sm:px-5 sm:pt-36 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:pb-24">
+        <div>
+          <p className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-ink-2">
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="size-2 rounded-full bg-[#F7931A]" />
+              Bitcoin
+            </span>
+            <span aria-hidden className="text-ink-3">·</span>
+            <span>{t("2 clés sur 3", "2 keys of 3")}</span>
+            <span aria-hidden className="text-ink-3">·</span>
+            <span>{t("en francs CFA", "in CFA francs")}</span>
+          </p>
+          <h1 className="mt-5 max-w-[13ch] text-[44px] font-extrabold leading-[1] tracking-[-0.04em] sm:text-[68px]">
+            {t("Personne ne vide la caisse ", "Nobody empties the fund ")}
+            <span className="text-brand">{t("seul.", "alone.")}</span>
+          </h1>
+          <p className="mt-6 max-w-[46ch] text-[17.5px] leading-relaxed text-ink-2">
+            {t(
+              "Koinon garde la caisse de votre association sur Bitcoin. Chaque dépense demande deux responsables sur trois. Le trésorier ne peut rien sortir seul, Koinon non plus, et chaque membre voit sur son téléphone qui a signé.",
+              "Koinon keeps your association's fund on Bitcoin. Every spend needs two of three officers. The treasurer cannot take anything alone, neither can Koinon, and every member sees on their phone who signed.",
+            )}
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <ButtonLink href="/app" size="lg" className="group">
+              {t("Essayer la démo", "Try the demo")}
+              <IconArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+            </ButtonLink>
+            <ButtonLink href="#preuve" variant="secondary" size="lg" className="ring-1 ring-line">
+              {t("Voir le refus", "See the refusal")}
+            </ButtonLink>
           </div>
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 sm:translate-x-[-4%] sm:rotate-[5deg]">
-            <MockPhone>
-              <MockApprove />
-            </MockPhone>
-          </div>
+          <p className="mt-6 max-w-[52ch] text-[13px] leading-relaxed text-ink-3">
+            {t(
+              "Démo sur regtest : de vraies transactions Bitcoin, des sats sans valeur. Pas sur le réseau principal, pas audité.",
+              "Demo on regtest: real Bitcoin transactions, sats with no value. Not on mainnet, not audited.",
+            )}
+          </p>
         </div>
-      </div>
-      <div className="relative -mt-24 border-y border-line bg-surface">
-        <dl className="mx-auto grid max-w-[1160px] grid-cols-1 divide-y divide-line px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          {[
-            ["2 / 3", t("signatures pour chaque dépense", "signatures for every spend")],
-            ["0", t("clé privée sur le serveur", "private keys on the server")],
-            ["9 / 9", t("vérifications e2e en CI, sur Bitcoin Core", "e2e checks in CI, on Bitcoin Core")],
-          ].map(([value, label]) => (
-            <div key={label} className="flex items-baseline gap-3 py-6 sm:justify-center sm:px-6">
-              <dt className="tabular text-[30px] font-bold tracking-[-0.03em]">{value}</dt>
-              <dd className="text-[14.5px] text-ink-2">{label}</dd>
-            </div>
-          ))}
-        </dl>
+        <HeroPhone />
       </div>
     </section>
   );
 }
 
-function MockPhone({ children }: { children: ReactNode }) {
+/** A real capture of Ibou's home screen in /app, one per language and theme. */
+function HeroPhone() {
+  const { t, lang, theme } = usePrefs();
   return (
-    <div aria-hidden className="pointer-events-none flex h-[600px] w-[296px] select-none flex-col overflow-hidden rounded-[42px] bg-surface text-left shadow-[0_0_0_1px_var(--color-line),0_50px_90px_-36px_rgb(20_14_60/0.45)]">
-      {children}
-    </div>
-  );
-}
-
-function MockRow({ avatar, title, sub, right, tone }: { avatar: ReactNode; title: string; sub: string; right: string; tone?: "good" }) {
-  return (
-    <div className="flex items-center gap-2.5 px-3.5 py-2.5 [&+&]:border-t [&+&]:border-line">
-      {avatar}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold">{title}</p>
-        <p className="truncate text-[11px] text-ink-3">{sub}</p>
-      </div>
-      <span className={`tabular text-[13px] font-semibold ${tone === "good" ? "text-good" : ""}`}>{right}</span>
-    </div>
-  );
-}
-
-function grouped(value: string, lang: "fr" | "en"): string {
-  return lang === "fr" ? value.replace(",", "\u00a0") : value;
-}
-
-function MockHome() {
-  const { t, lang } = usePrefs();
-  const f = (value: string) => grouped(value, lang);
-  return (
-    <>
-      <div className="rounded-b-[28px] bg-brand-soft px-4 pb-5 pt-5">
-        <div className="flex items-center gap-2.5">
-          <Avatar name={PEOPLE.O1.name} tone={PEOPLE.O1.tone} size={34} ring />
-          <div>
-            <p className="text-[13px] font-bold">{t("Bonjour, Ibou", "Hi, Ibou")}</p>
-            <p className="text-[11px] text-ink-2">{t("Trésorier", "Treasurer")}</p>
+    <figure className="mx-auto w-full max-w-[330px] lg:mr-4">
+      <div className="hero-stage">
+        <div className="hero-device">
+          <div className="relative overflow-hidden rounded-[40px] bg-surface">
+            <img
+              src={`/hero/home-${lang}-${theme}.webp`}
+              width={716}
+              height={1304}
+              alt={t(
+                "Écran d'accueil de Koinon : 60 000 F dans la caisse de l'association, boutons Dépenser et Inviter, cotisations de 5 000 F.",
+                "Koinon home screen: 60,000 F in the association's fund, Spend and Invite buttons, 5,000 F dues.",
+              )}
+              fetchPriority="high"
+              decoding="async"
+              className="block h-auto w-full"
+            />
+            <span aria-hidden className="hero-glare" />
           </div>
         </div>
-        <p className="mt-5 text-[11px] font-semibold text-brand-ink">Dahira Kolda</p>
-        <p className="tabular text-[36px] font-bold leading-tight tracking-[-0.035em]">{f("60,000")} F</p>
-        <p className="tabular text-[11.5px] text-ink-2">{f("152,450")} sats</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <span className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-brand text-[13px] font-semibold text-on-brand">
-            <IconSend size={15} />
-            {t("Dépenser", "Spend")}
+        <div className="hero-chip hero-chip-top">
+          <span className="grid size-7 place-items-center rounded-full bg-brand-soft text-brand">
+            <IconShield size={15} />
           </span>
-          <span className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-ink text-[13px] font-semibold text-surface">
-            <IconUserPlus size={15} />
-            {t("Inviter", "Invite")}
-          </span>
+          {t("2 signatures sur 3 pour dépenser", "2 of 3 signatures to spend")}
+        </div>
+        <div className="hero-chip hero-chip-bottom">
+          <span aria-hidden className="size-2 rounded-full bg-warn" />
+          {t("regtest · sats sans valeur", "regtest · sats with no value")}
         </div>
       </div>
-      <div className="flex flex-col gap-3 px-3 pt-4">
-        <p className="px-1 text-[11.5px] font-semibold text-ink-2">{t("Activité", "Activity")}</p>
-        <div className="overflow-hidden rounded-[18px] bg-card">
-          <MockRow avatar={<Avatar name="Awa" tone="amber" size={30} />} title="Awa" sub={t("6 confirmations", "6 confirmations")} right={`+${f("5,000")} F`} tone="good" />
-          <MockRow avatar={<Avatar name="Moussa" tone="sky" size={30} />} title="Moussa" sub={t("6 confirmations", "6 confirmations")} right={`+${f("5,000")} F`} tone="good" />
-          <MockRow avatar={<Avatar name="Fatou" tone="rose" size={30} />} title="Fatou" sub={t("6 confirmations", "6 confirmations")} right={`+${f("5,000")} F`} tone="good" />
-          <MockRow avatar={<Avatar name="Ibrahima" tone="good" size={30} />} title="Ibrahima" sub={t("6 confirmations", "6 confirmations")} right={`+${f("5,000")} F`} tone="good" />
-        </div>
-      </div>
-    </>
+      <figcaption className="mt-9 text-center text-[12.5px] leading-relaxed text-ink-3">
+        {t("Vrai écran de la démo, capturé le 18 nov. 2026.", "Real screen from the demo, captured 18 Nov 2026.")}
+      </figcaption>
+    </figure>
   );
 }
 
-function MockApprove() {
-  const { t, lang } = usePrefs();
-  const f = (value: string) => grouped(value, lang);
-  return (
-    <>
-      <p className="px-5 pb-2 pt-5 text-[15px] font-bold">{t("Demande", "Request")}</p>
-      <div className="flex flex-col items-center px-5 pb-4 text-center">
-        <Avatar name={PEOPLE.O1.name} tone={PEOPLE.O1.tone} size={42} />
-        <p className="mt-2 text-[12px] text-ink-2">{t("Ibou demande", "Ibou is requesting")}</p>
-        <p className="tabular text-[34px] font-bold leading-tight tracking-[-0.03em]">{f("15,000")} F</p>
-        <p className="tabular text-[11px] text-ink-3">{f("38,112")} sats · {t("taux figé", "rate locked")}</p>
-        <p className="mt-2 text-[13px]">« {t("Transport pour le Magal", "Transport for the Magal")} »</p>
-        <Chip tone="brand" dot className="mt-2 h-5 text-[11px]">
-          {t("À signer", "To sign")}
-        </Chip>
-      </div>
-      <div className="px-3">
-        <p className="px-1 pb-1.5 text-[11.5px] font-semibold text-ink-2">{t("Signatures", "Signatures")}</p>
-        <div className="overflow-hidden rounded-[18px] bg-card">
-          {(["O1", "O2", "O3"] as const).map((role) => (
-            <div key={role} className="flex items-center gap-2.5 px-3.5 py-2.5 [&+&]:border-t [&+&]:border-line">
-              <Avatar name={PEOPLE[role].name} tone={PEOPLE[role].tone} size={28} />
-              <span className="flex-1 text-[12.5px] font-semibold">
-                {PEOPLE[role].name}
-                {role === "O2" ? <span className="font-normal text-ink-3"> ({t("vous", "you")})</span> : null}
-              </span>
-              {role === "O1" ? (
-                <span className="grid size-5 place-items-center rounded-full bg-good text-white">
-                  <IconCheck size={12} />
-                </span>
-              ) : (
-                <span className="text-[11.5px] text-ink-3">{t("En attente", "Waiting")}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="mt-auto border-t border-line px-4 pb-5 pt-3">
-        <p className="mb-2.5 flex items-center justify-center gap-1 text-[11px] text-ink-2">
-          <IconShield size={12} className="text-brand" />
-          {t("Votre téléphone revérifie la transaction", "Your phone re-checks the transaction")}
-        </p>
-        <span className="flex h-12 items-center justify-center rounded-full bg-brand text-[14px] font-semibold text-on-brand">{t("Approuver", "Approve")}</span>
-      </div>
-    </>
-  );
-}
-
-/* ---------------------------------------------------------------- problem */
+/* ---------- Problem: three sourced numbers, each with its limit ---------- */
 
 function Problem() {
   const t = useT();
-  const rows: [string, string, string][] = [
-    [t("Qui tient l'argent", "Who holds the money"), t("Le compte Wave personnel du trésorier", "The treasurer's personal Wave account"), t("Une adresse que trois responsables contrôlent ensemble", "An address three officers control together")],
-    [t("Qui peut dépenser", "Who can spend"), t("Le trésorier, seul, à toute heure", "The treasurer, alone, at any time"), t("Deux responsables sur trois, chacun sur son téléphone", "Two of three officers, each on their own phone")],
-    [t("Ce que voient les membres", "What members see"), t("Un compte rendu oral à la réunion", "A spoken report at the meeting"), t("Chaque cotisation et chaque dépense, en francs CFA", "Every due and every spend, in CFA francs")],
-    [t("Si un responsable disparaît", "If an officer disappears"), t("L'argent part avec son téléphone", "The money leaves with their phone"), t("Un responsable et la clé de l'assemblée récupèrent le fonds, après un délai", "One officer and the assembly key recover the fund, after a delay")],
-  ];
+  const stats = [
+    {
+      value: t("57,4 %", "57.4%"),
+      label: t("des femmes au Sénégal épargnent en groupe (2024).", "of women in Senegal save in a group (2024)."),
+      limit: t("Mesure plus large qu'une tontine. Adultes : 43,5 %.", "Wider than a tontine. All adults: 43.5%."),
+      source: [
+        ["efa.africa", EFA],
+        ["Findex FIN17C", FINDEX],
+      ],
+    },
+    {
+      value: t("> 2 500", "> 2,500"),
+      label: t("calebasses de solidarité, plus de 80 000 membres, 95 % de femmes.", "solidarity funds, over 80,000 members, 95% women."),
+      limit: t("Chiffre du ministre (APS, 19 fév. 2025), pas un recensement.", "The minister's figure (APS, 19 Feb 2025), not a census."),
+      source: [["leral.net · APS", CALEBASSE]],
+    },
+    {
+      value: t("24,1 %", "24.1%"),
+      label: t("du volume de monnaie électronique de l'UEMOA passe au Sénégal (2024).", "of UEMOA e-money volume is in Senegal (2024)."),
+      limit: t("Un compte mobile a un seul titulaire. Pas l'argent des associations.", "A mobile account has one holder. Not association money."),
+      source: [["BCEAO §59", BCEAO]],
+    },
+  ] as const;
   return (
-    <Section id="probleme">
-      <Heading
-        eyebrow={t("Le problème", "The problem")}
-        title={t("Aujourd'hui, la caisse n'a qu'une seule clé.", "Today, the fund has only one key.")}
-        sub={t(
-          "Les associations sénégalaises collectent des cotisations, souvent une fois par mois. Presque toujours, une seule personne les garde, et une dispute suffit à casser la confiance.",
-          "Senegalese associations collect dues, often once a month. Almost always, one person keeps them, and one dispute is enough to break trust.",
-        )}
-      />
-      <div className="mt-12 grid gap-4 md:grid-cols-2">
-        <div className="rounded-[28px] bg-surface p-6 ring-1 ring-line sm:p-8">
-          <Chip tone="neutral">{t("Aujourd'hui", "Today")}</Chip>
-          <ul className="mt-5 flex flex-col gap-5">
-            {rows.map(([label, today]) => (
-              <li key={label}>
-                <p className="text-[13px] font-semibold text-ink-3">{label}</p>
-                <p className="mt-0.5 text-[16px] text-ink-2">{today}</p>
-              </li>
-            ))}
-          </ul>
+    <Section id="probleme" className="sm:py-20">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
+        <div>
+          <Kicker>{t("Le problème", "The problem")}</Kicker>
+          <Title>{t("L'argent du groupe tient dans une seule main.", "The group's money sits in one pair of hands.")}</Title>
+          <p className="mt-5 max-w-[44ch] text-[16px] leading-relaxed text-ink-2">
+            {t(
+              "Dahiras, tontines, GIE : la caisse est souvent chez le trésorier, ou sur son compte Wave. Les membres doivent le croire sur parole.",
+              "Dahiras, tontines, GIEs: the fund often sits with the treasurer, or on his Wave account. Members have to take his word for it.",
+            )}
+          </p>
         </div>
-        <div className="rounded-[28px] bg-brand-soft p-6 sm:p-8">
-          <Chip tone="brand" className="bg-brand text-on-brand">
-            {t("Avec Koinon", "With Koinon")}
-          </Chip>
-          <ul className="mt-5 flex flex-col gap-5">
-            {rows.map(([label, , koinon]) => (
-              <li key={label}>
-                <p className="text-[13px] font-semibold text-brand-ink/70">{label}</p>
-                <p className="mt-0.5 text-[16px] font-semibold text-ink">{koinon}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul className="grid gap-px overflow-hidden rounded-[28px] bg-line ring-1 ring-line sm:grid-cols-3 lg:grid-cols-1">
+          {stats.map((stat) => (
+            <li key={stat.value} className="flex flex-col bg-surface p-6 lg:grid lg:grid-cols-[10.5rem_minmax(0,1fr)] lg:items-baseline lg:gap-6">
+              <p className="tabular whitespace-nowrap text-[36px] font-extrabold sm:text-[30px] lg:text-[38px] leading-none tracking-[-0.035em] text-brand">{stat.value}</p>
+              <div className="mt-3 lg:mt-0">
+                <p className="text-[16px] font-semibold leading-snug">{stat.label}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-3">
+                  {stat.limit}{" "}
+                  {stat.source.map(([label, href], index) => (
+                    <span key={href}>
+                      {index > 0 ? " · " : null}
+                      <a className="font-semibold text-ink-2 underline underline-offset-2 hover:text-ink" href={href} target="_blank" rel="noreferrer">
+                        {label}
+                      </a>
+                    </span>
+                  ))}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </Section>
   );
 }
 
-/* ---------------------------------------------------------------- features */
+/* ---------- Three questions a member asks ---------- */
 
-function Features() {
+function Questions() {
   const t = useT();
-  const items = [
-    {
-      icon: <IconUsers size={22} />,
-      title: t("Deux signatures, toujours", "Two signatures, always"),
-      body: t("Chaque dépense attend un deuxième responsable. Ce n'est pas un réglage : c'est le script Bitcoin du fonds.", "Every spend waits for a second officer. It is not a setting: it is the fund's Bitcoin script."),
-    },
-    {
-      icon: <IconEye size={22} />,
-      title: t("Chaque membre voit tout", "Every member sees everything"),
-      body: t("Un lien en lecture seule, à poster dans le groupe WhatsApp : solde, cotisations et dépenses, en francs CFA.", "A read-only link to post in the WhatsApp group: balance, dues and spends, in CFA francs."),
-    },
-    {
-      icon: <IconLifebuoy size={22} />,
-      title: t("Une porte de secours à délai", "A time-locked emergency exit"),
-      body: t("Si deux téléphones sont perdus, un responsable et l'assemblée récupèrent le fonds, après un délai que personne ne peut raccourcir.", "If two phones are lost, one officer and the assembly recover the fund, after a delay nobody can shorten."),
-    },
-  ];
   return (
-    <Section className="pt-0 sm:pt-0">
-      <div className="grid gap-4 md:grid-cols-3">
-        {items.map((item) => (
-          <article key={item.title} className="flex flex-col gap-4 rounded-[28px] bg-surface p-6 ring-1 ring-line sm:p-7">
-            <span className="grid size-12 place-items-center rounded-2xl bg-brand-soft text-brand">{item.icon}</span>
-            <h3 className="text-[20px] font-bold tracking-[-0.01em]">{item.title}</h3>
-            <p className="text-[15px] leading-relaxed text-ink-2">{item.body}</p>
-          </article>
-        ))}
+    <Section id="questions">
+      <Kicker>{t("Comment ça marche", "How it works")}</Kicker>
+      <Title>{t("Les trois questions que pose chaque membre.", "The three questions every member asks.")}</Title>
+      <div className="mt-10 grid gap-4 lg:grid-cols-3">
+        <QuestionCard
+          question={t("Le trésorier peut-il partir avec la caisse ?", "Can the treasurer walk off with the fund?")}
+          answer={t("Non.", "No.")}
+          body={t(
+            "Trois responsables ont chacun une clé sur leur téléphone. Une dépense en demande deux. Avec une seule signature, Bitcoin refuse la transaction.",
+            "Three officers each hold a key on their phone. A spend needs two. With one signature, Bitcoin rejects the transaction.",
+          )}
+          limit={t("Prouvé sur regtest : une signature donne NULLFAIL.", "Proved on regtest: one signature gives NULLFAIL.")}
+          visual={<KeysVisual />}
+        />
+        <QuestionCard
+          question={t("Koinon peut-il prendre l'argent ?", "Can Koinon take the money?")}
+          answer={t("Non.", "No.")}
+          body={t(
+            "Le serveur n'a aucune clé. Il prépare la transaction ; le téléphone la relit et refuse de signer si le destinataire ou le montant a changé.",
+            "The server holds no key. It prepares the transaction; the phone re-reads it and refuses to sign if the recipient or amount changed.",
+          )}
+          limit={t("Il peut encore mentir sur le nombre de confirmations affiché.", "It can still lie about the confirmation count on screen.")}
+          visual={<ServerVisual />}
+        />
+        <QuestionCard
+          question={t("Et si un responsable disparaît ?", "What if an officer disappears?")}
+          answer={t("La caisse reste ouverte.", "The fund stays open.")}
+          body={t(
+            "Avec deux responsables, rien ne change. S'il n'en reste qu'un, lui et la clé de l'assemblée peuvent dépenser, mais seulement après un délai écrit dans le script.",
+            "With two officers left, nothing changes. If only one is left, they and the assembly key can spend, but only after a delay written into the script.",
+          )}
+          limit={t("10 blocs en démo. Le délai réel (~30 jours) n'a pas été testé.", "10 blocks in the demo. The real delay (~30 days) was not tested.")}
+          visual={<DelayVisual />}
+        />
+      </div>
+      <div className="mt-4 flex flex-col gap-2 rounded-[24px] bg-card px-6 py-5 sm:flex-row sm:items-center sm:gap-5">
+        <p className="shrink-0 text-[15px] font-bold">{t("Et deux responsables d'accord ?", "And two officers who agree?")}</p>
+        <p className="text-[14.5px] leading-relaxed text-ink-2">
+          {t(
+            "Ils peuvent dépenser : c'est la règle. Koinon empêche une personne seule, pas un accord à deux. Chaque membre voit leurs deux noms.",
+            "They can spend: that is the rule. Koinon stops one person, not two who agree. Every member sees both their names.",
+          )}
+        </p>
       </div>
     </Section>
   );
 }
 
-/* ---------------------------------------------------------------- how it works */
+function QuestionCard({ question, answer, body, limit, visual }: { question: string; answer: string; body: string; limit: string; visual: ReactNode }) {
+  return (
+    <article className="flex flex-col overflow-hidden rounded-[28px] bg-surface ring-1 ring-line">
+      <div className="grid h-40 place-items-center bg-card/60">{visual}</div>
+      <div className="flex flex-1 flex-col p-6">
+        <h3 className="text-[18px] font-bold leading-snug tracking-[-0.01em] lg:min-h-[2.75em]">{question}</h3>
+        <p className="mt-3 text-[28px] font-extrabold leading-none tracking-[-0.03em] text-brand">{answer}</p>
+        <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">{body}</p>
+        <div className="mt-auto pt-5">
+          <p className="border-t border-line pt-3.5 text-[12.5px] leading-relaxed text-ink-3">{limit}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
 
-function HowItWorks() {
+function KeysVisual() {
   const t = useT();
-  const steps = [
-    {
-      who: PEOPLE.O1,
-      title: t("Le trésorier demande", "The treasurer asks"),
-      body: t(
-        "Il saisit le montant en francs CFA, le destinataire et le motif. Le taux est figé, et la demande part chiffrée aux deux autres responsables par Nostr.",
-        "He enters the amount in CFA francs, the recipient and the purpose. The rate is locked, and the request goes encrypted to the two other officers over Nostr.",
-      ),
-    },
-    {
-      who: PEOPLE.O2,
-      title: t("Une 2ᵉ responsable vérifie et signe", "A 2nd officer checks and signs"),
-      body: t(
-        "Son téléphone relit la transaction lui-même : bon destinataire, bon montant, frais sous le plafond. Si le serveur a changé un octet, il refuse de signer.",
-        "Her phone re-reads the transaction itself: right recipient, right amount, fee under the cap. If the server changed one byte, it refuses to sign.",
-      ),
-    },
-    {
-      who: null,
-      title: t("Tout le monde le voit", "Everyone sees it"),
-      body: t(
-        "Bitcoin accepte deux signatures et rien de moins. La dépense apparaît chez chaque membre, avec son motif.",
-        "Bitcoin accepts two signatures and nothing less. The spend shows up for every member, with its purpose.",
-      ),
-    },
+  return (
+    <div className="flex flex-col items-center gap-3" aria-hidden>
+      <div className="flex items-center gap-2">
+        {(["O1", "O2", "O3"] as const).map((role) => {
+          const person = PEOPLE[role];
+          const signed = role !== "O3";
+          return (
+            <span key={role} className={`relative ${signed ? "" : "opacity-45"}`}>
+              <Avatar name={person.name} tone={person.tone} size={48} ring />
+              {signed ? (
+                <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-good text-white ring-2 ring-surface">
+                  <IconCheck size={11} />
+                </span>
+              ) : null}
+            </span>
+          );
+        })}
+      </div>
+      <span className="font-mono text-[12.5px] font-semibold text-ink-2">2 / 3 {t("signatures", "signatures")}</span>
+    </div>
+  );
+}
+
+function ServerVisual() {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-3" aria-hidden>
+      <span className="grid h-20 w-16 place-items-center rounded-2xl bg-surface ring-1 ring-line">
+        <span className="flex flex-col gap-1.5">
+          <span className="h-1.5 w-8 rounded-full bg-ink-3/40" />
+          <span className="h-1.5 w-8 rounded-full bg-ink-3/40" />
+          <span className="h-1.5 w-8 rounded-full bg-ink-3/40" />
+        </span>
+      </span>
+      <span className="flex flex-col items-start gap-1.5">
+        <span className="font-mono text-[12.5px] font-semibold text-ink-2">{t("serveur", "server")}</span>
+        <Chip tone="bad">{t("0 clé", "0 keys")}</Chip>
+      </span>
+    </div>
+  );
+}
+
+function DelayVisual() {
+  const t = useT();
+  return (
+    <div className="w-[78%] max-w-[260px]" aria-hidden>
+      <div className="flex items-center justify-between text-[12px] font-semibold text-ink-2">
+        <span>{t("Départ", "Start")}</span>
+        <span className="inline-flex items-center gap-1">
+          <IconClock size={13} />
+          {t("délai", "delay")}
+        </span>
+      </div>
+      <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-card-2">
+        <span className="block h-full w-[68%] rounded-full bg-[repeating-linear-gradient(135deg,var(--color-ink-3)_0_4px,transparent_4px_8px)] opacity-40" />
+        <span className="ml-1 block h-full flex-1 rounded-full bg-brand" />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[12px]">
+        <span className="text-ink-3">{t("verrouillé", "locked")}</span>
+        <span className="font-semibold text-brand">{t("assemblée + 1", "assembly + 1")}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Proof: one live refusal, the rest listed ---------- */
+
+function Proof() {
+  const t = useT();
+  const n = useNum();
+  const [sigs, setSigs] = useState<1 | 2>(1);
+  const refused = sigs === 1;
+  const others: [string, string, string][] = [
+    ["PSBT_MISMATCH", t("Destinataire changé après la demande : le téléphone ne signe pas.", "Recipient changed after the request: the phone does not sign."), "core/test/verify.test.ts"],
+    ["FEE_OVER_CAP", t("Frais au-dessus du plafond : refusé avant la signature.", "Fee above the cap: refused before signing."), "core/test/verify.test.ts"],
+    ["non-BIP68-final", t("Secours avant la fin du délai : bitcoind refuse.", "Recovery before the delay ends: bitcoind refuses."), "pnpm kill-test"],
+    ["REQUEST_EXPIRED", t("Demande de plus de 24 h : ni signée, ni diffusée.", "Request older than 24 h: not signed, not broadcast."), "coordinator/test/api.test.ts"],
+    [t("chaîne cassée", "chain broken"), t("Une ligne d'historique modifiée : le téléphone s'arrête dessus.", "One history row edited: the phone stops at it."), "core/test/proof.test.ts"],
   ];
   return (
-    <Section id="comment">
-      <Heading eyebrow={t("Comment ça marche", "How it works")} title={t("Une dépense, trois étapes.", "One spend, three steps.")} />
-      <ol className="mt-12 grid gap-4 md:grid-cols-3">
-        {steps.map((step, index) => (
-          <li key={step.title} className="flex flex-col gap-4 rounded-[28px] bg-card p-6 sm:p-7">
-            <div className="flex items-center justify-between">
-              <span className="tabular grid size-9 place-items-center rounded-full bg-surface text-[15px] font-bold">{index + 1}</span>
-              {step.who ? <Avatar name={step.who.name} tone={step.who.tone} size={36} /> : <Avatar name="12" tone="good" size={36}><IconUsers size={17} /></Avatar>}
+    <Section id="preuve">
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+        <div>
+          <Kicker>{t("La preuve", "The proof")}</Kicker>
+          <Title>{t("Essayez avec une seule signature.", "Try it with one signature.")}</Title>
+          <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-ink-2">
+            {t(
+              "Le refus ne vient pas d'un bouton grisé. C'est Bitcoin qui rejette la transaction. Dans la démo, vous pouvez le provoquer vous-même.",
+              "The refusal is not a greyed-out button. Bitcoin itself rejects the transaction. In the demo, you can trigger it yourself.",
+            )}
+          </p>
+
+          <div className="mt-8 rounded-[28px] bg-surface p-5 shadow-[0_24px_60px_-34px_rgb(20_14_60/0.3)] ring-1 ring-line sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold">{t("Location de salle", "Hall rental")}</p>
+                <p className="tabular mt-0.5 font-mono text-[12.5px] text-ink-2">
+                  {n(REQUEST_XOF)} F · {n(requestSats)} sats
+                </p>
+              </div>
+              <Chip tone={refused ? "bad" : "good"} dot>
+                {refused ? "REFUSE" : "ALLOW"}
+              </Chip>
             </div>
-            <h3 className="text-[20px] font-bold tracking-[-0.01em]">{step.title}</h3>
-            <p className="text-[15px] leading-relaxed text-ink-2">{step.body}</p>
-          </li>
-        ))}
-      </ol>
-    </Section>
-  );
-}
-
-/* ---------------------------------------------------------------- refusals */
-
-function Refusals() {
-  const t = useT();
-  const attacks = [
-    {
-      title: t("Le trésorier dépense seul", "The treasurer spends alone"),
-      code: "Signature must be zero for failed CHECK(MULTI)SIG",
-      who: "Bitcoin Core",
-      answer: t("Le nœud rejette la transaction. Notre serveur n'a rien décidé.", "The node rejects the transaction. Our server decided nothing."),
-    },
-    {
-      title: t("Le serveur change le destinataire", "The server swaps the recipient"),
-      code: "PSBT_MISMATCH",
-      who: t("Téléphone de la secrétaire", "Secretary's phone"),
-      answer: t("Son téléphone compare la transaction à la demande lue, et refuse de signer.", "Her phone compares the transaction with the request she read, and refuses to sign."),
-    },
-    {
-      title: t("Récupération trop tôt", "Recovery too early"),
-      code: "non-BIP68-final",
-      who: "Bitcoin Core",
-      answer: t("Le chemin de secours attend N blocs après chaque cotisation (10 en démo).", "The fallback path waits N blocks after each due (10 in the demo)."),
-    },
-    {
-      title: t("Demande expirée", "Expired request"),
-      code: "REQUEST_EXPIRED",
-      who: t("Téléphone et serveur", "Phone and server"),
-      answer: t("Après 24 heures, personne ne peut la signer ni l'envoyer.", "After 24 hours, nobody can sign or send it."),
-    },
-    {
-      title: t("Quelqu'un modifie l'historique", "Someone edits the history"),
-      code: "audit broken at seq 1",
-      who: t("Vérification d'audit", "Audit check"),
-      answer: t("Chaque ligne porte l'empreinte de la précédente. La chaîne casse, et le dit.", "Each row carries the hash of the previous one. The chain breaks, and says so."),
-    },
-  ];
-  return (
-    <section id="refus" className="scroll-mt-24 px-3 sm:px-5">
-      <div className="mx-auto max-w-[1240px] rounded-[40px] bg-[#111113] px-5 py-20 text-white sm:px-10 sm:py-24">
-        <div className="mx-auto max-w-[1080px]">
-          <div className="flex max-w-[720px] flex-col gap-4">
-            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-[#a993ff]">{t("Essayez de tricher", "Try to cheat")}</span>
-            <h2 className="text-[34px] font-bold leading-[1.08] tracking-[-0.03em] sm:text-[46px]">{t("Les règles ne vivent pas dans un bouton désactivé.", "The rules don't live in a disabled button.")}</h2>
-            <p className="text-[17px] leading-relaxed text-white/65">
+            <label className="mt-5 block">
+              <span className="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink-2">
+                <span>{t("Signatures", "Signatures")}</span>
+                <span className="font-mono text-ink">{sigs} / 2</span>
+              </span>
+              <input
+                className="home-range mt-2.5"
+                style={{ ["--home-fill" as string]: refused ? "0%" : "100%" }}
+                type="range"
+                min={1}
+                max={2}
+                step={1}
+                value={sigs}
+                aria-valuetext={refused ? t("1 signature, Bitcoin refuse", "1 signature, Bitcoin refuses") : t("2 signatures, Bitcoin accepte", "2 signatures, Bitcoin accepts")}
+                onChange={(event) => setSigs(Number(event.target.value) === 1 ? 1 : 2)}
+              />
+            </label>
+            <div
+              aria-live="polite"
+              className={`mt-4 rounded-2xl p-4 ring-1 transition-colors ${refused ? "bg-bad-soft/60 ring-bad/30" : "bg-good-soft/60 ring-good/30"}`}
+            >
+              <p className={`font-mono text-[13px] font-bold ${refused ? "text-bad" : "text-good"}`}>{refused ? "NULLFAIL" : "ALLOW · 2-of-3"}</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed text-ink">
+                {refused
+                  ? t("Seul Ibou a signé. bitcoind rejette la dépense ; le serveur n'a rien décidé.", "Only Ibou signed. bitcoind rejects the spend; the server decided nothing.")
+                  : t("Ibou et Coumba ont signé. Les deux clés se lisent dans la transaction.", "Ibou and Coumba signed. Both keys can be read in the transaction.")}
+              </p>
+            </div>
+            <p className="mt-4 text-[12px] leading-relaxed text-ink-3">
               {t(
-                "Chaque refus ci-dessous est produit par la suite de tests sur GitHub Actions, contre un vrai nœud Bitcoin Core. Dans la démo, vous pouvez les provoquer vous-même.",
-                "Each refusal below is produced by the test suite on GitHub Actions, against a real Bitcoin Core node. In the demo, you can trigger them yourself.",
+                "Ce curseur est une illustration et n'appelle pas de nœud. Résultats enregistrés sur regtest le 17 nov. 2026 : NULLFAIL (pnpm kill-test) et tx 9f9144009c77…1728.",
+                "This slider is an illustration and calls no node. Recorded on regtest on 17 Nov 2026: NULLFAIL (pnpm kill-test) and tx 9f9144009c77…1728.",
               )}
             </p>
           </div>
-          <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {attacks.map((attack) => (
-              <article key={attack.code} className="flex flex-col gap-3 rounded-[24px] bg-white/[0.06] p-5 ring-1 ring-white/10">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-[#ff5d5d]/15 px-2.5 text-[12px] font-semibold text-[#ff8a8a]">
-                    <IconShield size={13} />
-                    {t("Refusé", "Refused")}
-                  </span>
-                  <span className="truncate text-[12px] text-white/50">{attack.who}</span>
-                </div>
-                <h3 className="text-[17px] font-bold">{attack.title}</h3>
-                <p className="text-[14px] leading-relaxed text-white/65">{attack.answer}</p>
-                <p className="mt-auto break-words rounded-xl bg-black/40 px-3 py-2 font-mono text-[12px] leading-relaxed text-[#ff8a8a]">{attack.code}</p>
-              </article>
-            ))}
-            <a href="/app" className="press group flex flex-col justify-between gap-6 rounded-[24px] bg-brand p-5 text-on-brand">
-              <span className="text-[17px] font-bold">{t("Provoquez-les vous-même, dans la démo.", "Trigger them yourself, in the demo.")}</span>
-              <span className="flex items-center gap-2 text-[14.5px] font-semibold">
-                {t("Ouvrir l'app", "Open the app")}
-                <IconArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
-              </span>
-            </a>
-          </div>
         </div>
-      </div>
-    </section>
-  );
-}
 
-/* ---------------------------------------------------------------- status */
-
-function Status() {
-  const t = useT();
-  type Mark = "live" | "sim" | "next";
-  const rows: [string, Mark, string][] = [
-    [t("Fonds 2-sur-3 et chemin de secours à délai", "2-of-3 fund and timelocked fallback"), "live", t("Bitcoin Core 32.1, regtest", "Bitcoin Core 32.1, regtest")],
-    [t("Vérification de la transaction sur le téléphone", "Transaction check on the phone"), "live", t("Avant chaque signature", "Before every signature")],
-    [t("Demandes et accords par Nostr (NIP-17)", "Requests and approvals over Nostr (NIP-17)"), "live", t("Relais de démo, sans authentification des éditeurs", "Demo relay, no publisher authentication")],
-    [t("Clés chiffrées sur l'appareil, passkey ou code", "Keys encrypted on the device, passkey or code"), "live", "PBKDF2 310k + AES-256-GCM"],
-    [t("Journal d'audit chaîné", "Hash-chained audit log"), "live", t("Vérifiable par tout membre", "Verifiable by any member")],
-    [t("Prix BTC/EUR", "BTC/EUR price"), "sim", t("Valeur fixe de démo (60 000 €), affichée comme telle", "Fixed demo value (€60,000), labelled as such")],
-    [
-      t("Frais pour poser 5 000 F on-chain", "Fee to land 5,000 F on-chain"),
-      "live",
-      t("~100 F à 2 sat/vB, payés par le membre, pas prélevés sur la caisse", "~100 F at 2 sat/vB, paid by the member, not taken from the fund"),
-    ],
-    [t("Trois responsables dans un seul navigateur", "Three officers in one browser"), "sim", t("Pour la démo. Un vrai fonds : une clé par téléphone", "For the demo. A real fund: one key per phone")],
-    [t("Rejoindre un fonds depuis un 2ᵉ téléphone", "Join a fund from a 2nd phone"), "next", t("Invitation par QR", "QR invitation")],
-    [t("Cotiser par Wave ou Orange Money", "Pay dues with Wave or Orange Money"), "next", t("Via un pont Mobile Money", "Through a Mobile Money bridge")],
-    [t("Lightning, wolof, réseau principal", "Lightning, Wolof, mainnet"), "next", t("Le réseau principal attend un audit", "Mainnet waits for an audit")],
-  ];
-  const mark: Record<Mark, { label: string; tone: "good" | "warn" | "neutral" }> = {
-    live: { label: t("En ligne", "Live"), tone: "good" },
-    sim: { label: t("Simulé", "Simulated"), tone: "warn" },
-    next: { label: t("Prochain", "Next"), tone: "neutral" },
-  };
-  return (
-    <Section id="statut">
-      <Heading
-        eyebrow={t("Où en est le projet", "Where it stands")}
-        title={t("Honnête, ligne par ligne.", "Honest, line by line.")}
-        sub={t("Ce qui tourne, ce qui est simulé pour la démo, et ce qui vient ensuite.", "What runs, what is simulated for the demo, and what comes next.")}
-      />
-      <div className="mt-12 overflow-hidden rounded-[28px] bg-surface ring-1 ring-line">
-        {rows.map(([what, kind, note]) => (
-          <div key={what} className="grid gap-2 border-t border-line px-5 py-4 first:border-t-0 sm:grid-cols-[minmax(0,1.3fr)_120px_minmax(0,1fr)] sm:items-center sm:gap-4 sm:px-7">
-            <span className="text-[15.5px] font-semibold">{what}</span>
-            <span>
-              <Chip tone={mark[kind].tone} dot>
-                {mark[kind].label}
-              </Chip>
-            </span>
-            <span className="text-[14px] text-ink-2">{note}</span>
-          </div>
-        ))}
+        <div className="lg:pt-[7.5rem]">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-3">{t("Les autres refus, testés", "The other refusals, tested")}</p>
+          <ul className="mt-3 overflow-hidden rounded-[24px] bg-surface ring-1 ring-line">
+            {others.map(([code, line, test]) => (
+              <li key={code} className="border-t border-line px-5 py-4 first:border-t-0">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <span className="font-mono text-[12.5px] font-bold text-bad">{code}</span>
+                  <span className="break-all font-mono text-[11.5px] text-ink-3">{test}</span>
+                </div>
+                <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-2">{line}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </Section>
   );
 }
 
-/* ---------------------------------------------------------------- faq */
+/* ---------- Limits and what this is not ---------- */
 
-function Faq() {
+function Limits() {
   const t = useT();
-  const items: [string, string][] = [
-    [
-      t("Et si deux responsables s'entendent pour voler ?", "What if two officers collude to steal?"),
-      t("Ils peuvent dépenser : c'est la règle choisie. Koinon empêche une personne seule, pas une majorité. Chaque dépense reste visible par tous les membres, avec son motif.", "They can spend: that is the chosen rule. Koinon stops one person, not a majority. Every spend stays visible to all members, with its purpose."),
-    ],
-    [
-      t("Et si un responsable perd son téléphone ?", "What if an officer loses their phone?"),
-      t("Les deux autres peuvent toujours dépenser. Si deux téléphones sont perdus, un responsable et la clé de l'assemblée récupèrent le fonds après un délai (environ 30 jours en réel, 10 blocs en démo).", "The two others can still spend. If two phones are lost, one officer and the assembly key recover the fund after a delay (about 30 days for real, 10 blocks in the demo)."),
-    ],
-    [
-      t("Le serveur peut-il prendre l'argent ?", "Can the server take the money?"),
-      t("Non. Il ne détient aucune clé privée. S'il modifie une transaction, le téléphone du responsable refuse de la signer.", "No. It holds no private key. If it alters a transaction, the officer's phone refuses to sign it."),
-    ],
-    [
-      t("Pourquoi Bitcoin et pas un compte Wave partagé ?", "Why Bitcoin and not a shared Wave account?"),
-      t("Un compte Wave a un seul titulaire et un seul code. Ici, la règle des deux signatures est vérifiée par le réseau lui-même, pas par une promesse.", "A Wave account has one holder and one code. Here, the two-signature rule is checked by the network itself, not by a promise."),
-    ],
-    [
-      t("5 000 F de cotisation, ce n'est pas trop petit pour Bitcoin ?", "Isn't a 5,000 F due too small for Bitcoin?"),
-      t(
-        "À 60 000 €/BTC, 5 000 F font 12 705 sats. Les poser sur l'adresse 2-sur-3 (~122 vbytes) coûte 244 sats à 2 sat/vB, soit 96 F — payés par le portefeuille du membre, pas retirés de la caisse. À 5 sat/vB, 240 F. C'est pourquoi Koinon est une caisse d'association (mensuelle, plutôt 10–50 000 F), pas une tontine hebdomadaire de 500 F. Lightning servirait ces petites parts ; on ne l'a pas ajouté, parce qu'un nœud qui reçoit Lightning tient les fonds.",
-        "At €60,000/BTC, 5,000 F is 12,705 sats. Landing it on the 2-of-3 address (~122 vbytes) costs 244 sats at 2 sat/vB, which is 96 F — paid by the member's wallet, not taken from the fund. At 5 sat/vB, 240 F. That is why Koinon is an association treasury (monthly, more like 10–50,000 F), not a 500 F weekly tontine. Lightning would serve those small shares; we did not add it, because a Lightning receiving node holds the coins.",
-      ),
-    ],
-    [
-      t("Les sats de la démo ont-ils une valeur ?", "Do the demo sats have value?"),
-      t("Non. La démo tourne sur regtest, un réseau Bitcoin privé de test. L'app le rappelle partout.", "No. The demo runs on regtest, a private Bitcoin test network. The app says so everywhere."),
-    ],
+  type MarkKind = "live" | "sim" | "next";
+  const rows: [string, MarkKind, string][] = [
+    [t("Caisse 2-sur-3 et secours à délai", "2-of-3 fund and delayed recovery"), "live", t("Bitcoin Core 32.1, regtest", "Bitcoin Core 32.1, regtest")],
+    [t("Vérification sur le téléphone avant de signer", "Check on the phone before signing"), "live", "PSBT_MISMATCH · FEE_OVER_CAP"],
+    [t("Demandes chiffrées (Nostr NIP-17)", "Encrypted requests (Nostr NIP-17)"), "live", t("Relais de démo, sans authentification", "Demo relay, no authentication")],
+    [t("Clés chiffrées sur l'appareil", "Keys encrypted on the device"), "live", t("Passkey, ou un code à 8 chiffres", "Passkey, or an 8-digit code")],
+    [t("Historique relu sur le téléphone", "History rechecked on the phone"), "live", t("Une chaîne réécrite depuis le début peut correspondre", "A chain rewritten from the start can match")],
+    [t("Prix BTC/EUR", "BTC/EUR price"), "sim", t("Figé à 60 000, affiché comme tel", "Fixed at 60,000, labelled as such")],
+    [t("Trois responsables dans un navigateur", "Three officers in one browser"), "sim", t("La démo. Un vrai fonds : une clé par téléphone", "The demo. A real fund: one key per phone")],
+    [t("Cotiser par Wave ou Orange Money", "Pay dues with Wave or Orange Money"), "next", t("Un pont, pas dans ce dépôt", "A bridge, not in this repo")],
+    [t("Réseau principal", "Mainnet"), "next", t("Attend un audit", "Waits for an audit")],
+  ];
+  const mark: Record<MarkKind, { label: string; tone: "good" | "warn" | "neutral" }> = {
+    live: { label: t("Réel", "Live"), tone: "good" },
+    sim: { label: t("Simulé", "Simulated"), tone: "warn" },
+    next: { label: t("Ensuite", "Next"), tone: "neutral" },
+  };
+  const not: [string, string][] = [
+    [t("Pas un compte Wave partagé", "Not a shared Wave account"), t("Un compte a un titulaire. Ici, deux clés signent.", "An account has one holder. Here, two keys sign.")],
+    [t("Pas un serveur qui approuve", "Not a server that approves"), t("Il construit la transaction, il ne la valide pas.", "It builds the transaction, it does not approve it.")],
+    [t("Pas Lightning", "Not Lightning"), t("La caisse doit rester des mois dans le script.", "The fund is meant to sit for months in the script.")],
+    [t("Pas d'assistant IA, pas de wolof", "No AI assistant, no Wolof"), t("Interface en français et en anglais.", "Interface in French and English.")],
   ];
   return (
-    <Section id="faq">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <Heading eyebrow="FAQ" title={t("Ce qu'un trésorier demande en premier.", "What a treasurer asks first.")} />
-        <div className="flex flex-col gap-2.5">
-          {items.map(([question, answer]) => (
-            <details key={question} className="group rounded-[22px] bg-surface px-5 ring-1 ring-line open:pb-5">
-              <summary className="flex min-h-[64px] cursor-pointer list-none items-center justify-between gap-4 text-[16.5px] font-semibold [&::-webkit-details-marker]:hidden">
-                {question}
-                <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-card text-ink-2 transition-transform duration-300 group-open:rotate-180">
-                  <IconChevronDown size={17} />
-                </span>
-              </summary>
-              <p className="max-w-[640px] text-[15px] leading-relaxed text-ink-2">{answer}</p>
-            </details>
+    <Section id="limites">
+      <Kicker>{t("Limites", "Limits")}</Kicker>
+      <Title>{t("Ce qui marche, et où ça s'arrête.", "What works, and where it stops.")}</Title>
+      <div className="mt-10 grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+        <div className="overflow-hidden rounded-[24px] bg-surface ring-1 ring-line">
+          <div className="hidden grid-cols-[minmax(0,1.2fr)_7rem_minmax(0,1fr)] bg-card/60 px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-3 sm:grid">
+            <span>{t("Quoi", "What")}</span>
+            <span>{t("État", "State")}</span>
+            <span>{t("Limite", "Limit")}</span>
+          </div>
+          {rows.map(([what, kind, note]) => (
+            <div key={what} className="grid gap-1.5 border-t border-line px-5 py-3.5 first:border-t-0 sm:grid-cols-[minmax(0,1.2fr)_7rem_minmax(0,1fr)] sm:items-center sm:gap-3 sm:first:border-t">
+              <span className="text-[15px] font-semibold">{what}</span>
+              <span>
+                <Chip tone={mark[kind].tone} dot>
+                  {mark[kind].label}
+                </Chip>
+              </span>
+              <span className="text-[13.5px] text-ink-2">{note}</span>
+            </div>
           ))}
+        </div>
+        <div className="rounded-[24px] bg-card p-6">
+          <p className="text-[15px] font-bold">{t("Ce que Koinon n'est pas", "What Koinon is not")}</p>
+          <ul className="mt-4 flex flex-col gap-4">
+            {not.map(([title, body]) => (
+              <li key={title} className="flex gap-3">
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-bad-soft text-bad" aria-hidden>
+                  <IconX size={12} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[14.5px] font-semibold">{title}</span>
+                  <span className="mt-0.5 block text-[13.5px] leading-relaxed text-ink-2">{body}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </Section>
@@ -546,30 +627,26 @@ function Faq() {
 function Closing() {
   const t = useT();
   return (
-    <section className="px-3 pb-16 sm:px-5">
-      <div className="relative mx-auto flex max-w-[1240px] flex-col items-center overflow-hidden rounded-[40px] bg-brand px-6 py-20 text-center text-on-brand sm:py-24">
-        <div aria-hidden className="absolute -bottom-24 -right-16 opacity-25">
-          <Logo size={280} withName={false} />
+    <section className="px-4 pb-16 sm:px-5">
+      <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[32px] bg-brand px-6 py-14 text-on-brand sm:px-12 sm:py-20">
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-14 opacity-20">
+          <Logo size={260} withName={false} />
         </div>
-        <span className="relative inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[13px] font-semibold">
-          <IconClock size={14} />
-          {t("Deux minutes, dans le navigateur", "Two minutes, in the browser")}
-        </span>
-        <h2 className="relative mt-5 max-w-[720px] text-[36px] font-bold leading-[1.06] tracking-[-0.03em] sm:text-[52px]">
+        <h2 className="relative max-w-[16ch] text-[34px] font-extrabold leading-[1.04] tracking-[-0.03em] sm:text-[50px]">
           {t("Jouez les deux responsables. Essayez de tricher.", "Play both officers. Try to cheat.")}
         </h2>
-        <p className="relative mt-4 max-w-[560px] text-[17px] leading-relaxed text-white/80">
+        <p className="relative mt-4 max-w-[50ch] text-[16.5px] leading-relaxed text-white/85">
           {t(
-            "La démo crée un dahira de 12 membres, avec de vraies clés et de vraies transactions regtest. Deux téléphones côte à côte.",
-            "The demo creates a 12-member dahira, with real keys and real regtest transactions. Two phones side by side.",
+            "Deux minutes dans le navigateur. La démo crée un dahira avec de vraies clés et de vraies transactions regtest. Les sats n'ont aucune valeur.",
+            "Two minutes in the browser. The demo creates a dahira with real keys and real regtest transactions. The sats have no value.",
           )}
         </p>
-        <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-          <a href="/app" className="press inline-flex h-14 items-center gap-2 rounded-full bg-white px-7 text-[16px] font-semibold text-[#111113] hover:bg-white/90">
-            {t("Ouvrir l'app", "Open the app")}
+        <div className="relative mt-8 flex flex-wrap gap-3">
+          <a href="/app" className="press inline-flex h-13 items-center gap-2 rounded-full bg-white px-7 text-[15.5px] font-semibold text-[#111113] hover:bg-white/90">
+            {t("Essayer la démo", "Try the demo")}
             <IconArrowRight size={18} />
           </a>
-          <a href={REPO_URL} target="_blank" rel="noreferrer" className="press inline-flex h-14 items-center rounded-full bg-white/15 px-7 text-[16px] font-semibold hover:bg-white/20">
+          <a href={REPO_URL} target="_blank" rel="noreferrer" className="press inline-flex h-13 items-center rounded-full bg-white/15 px-7 text-[15.5px] font-semibold hover:bg-white/20">
             {t("Lire le code", "Read the code")}
           </a>
         </div>

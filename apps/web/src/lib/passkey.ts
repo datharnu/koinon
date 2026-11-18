@@ -13,9 +13,18 @@ export type UnlockMethod = { method: "passkey"; credentialId: string; salt: stri
 const UNLOCK_KEY = "koinon.unlock.v1";
 
 export class PasskeyError extends Error {
-  constructor(readonly code: "UNSUPPORTED" | "NO_PRF" | "CANCELLED" | "FAILED") {
+  constructor(readonly code: "UNSUPPORTED" | "NO_PRF" | "CANCELLED" | "FAILED" | "HOST") {
     super(code);
   }
+}
+
+/** localhost is a valid passkey domain. A numeric address is a secure context, and Chrome still refuses it. */
+export function passkeyHostOk(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host.includes(":") || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
+  return true;
 }
 
 export function readUnlock(): UnlockMethod | null {
@@ -120,6 +129,7 @@ function mapError(error: unknown): PasskeyError {
   if (error instanceof PasskeyError) return error;
   if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "AbortError")) return new PasskeyError("CANCELLED");
   if (error instanceof DOMException && error.name === "NotSupportedError") return new PasskeyError("NO_PRF");
+  if (error instanceof DOMException && error.name === "SecurityError") return new PasskeyError("HOST");
   return new PasskeyError("FAILED");
 }
 

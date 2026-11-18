@@ -21,6 +21,11 @@ export function signerName(fund: FundView, role: ProofRole, lang: Lang): string 
   return label;
 }
 
+/** Default labels are stored in the creator's language. Show them in the reader's; keep custom ones. */
+export function roleLabel(role: ProofRole, label: string, lang: Lang): string {
+  return DEMO_LABELS[role].includes(label) ? DEMO_LABELS[role][lang === "fr" ? 0 : 1]! : label;
+}
+
 export function whoSigned(fund: FundView, roles: ProofRole[], lang: Lang): string {
   return roles.map((role) => signerName(fund, role, lang)).join(" + ");
 }

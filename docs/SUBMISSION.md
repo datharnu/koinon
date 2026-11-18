@@ -96,19 +96,10 @@ These are targets. Current traction is zero associations.
 
 MIT. `LICENSE`. Copyright 2026 Koinon contributors. Put the team names and handles on Devpost. They are not in the repo.
 
-## Demo video — about 2 minutes 50 seconds
+## Demo video — 2:15
 
-Record against the local stack, or the VPS once it exists. Do not record a spend on the Vercel URL. That host has no `/v1`. Say "regtest" once, out loud, before the first spend.
+The cut, the voiceover, the French subtitles and the re-record steps are in [`docs/VIDEO.md`](VIDEO.md). `node scripts/record-demo.mjs` records the takes from the local stack. `node scripts/build-video.mjs` cuts them to `.video/koinon-demo.mp4` and refuses to finish over 3:00.
 
-| Time | Shot | Say |
-| --- | --- | --- |
-| 0:00–0:20 | A Wave-style balance with one name on it. Cut to three people and a pot. | A treasurer who holds the association's pot can empty it. The members find out when they ask. The pot has to last for months, and no one person should be able to move it. |
-| 0:20–0:45 | `/app`. Create the fund. Type the 8-digit code. Land on the home screen: 12 members, francs, "regtest". | This phone creates the fund. Three officers. Twelve members. The keys stay on the phone. The server does not get them. |
-| 0:45–1:05 | Test network. "Ibou spends alone." Blocked. Show the raw line. | One signature. Bitcoin refuses it. The screen is not the guard. The node is. |
-| 1:05–1:25 | "The server swaps the recipient." Blocked. `PSBT_MISMATCH`. | The request said one address. The transaction pays another. Coumba's phone refuses before it signs. |
-| 1:25–1:50 | Ibou requests 15,000 F, hall rental. Coumba approves. Ibou sends. Mine one block. The row shows Ibou + Coumba. | Two officers sign. Then it confirms. Neither of them could have done this alone. |
-| 1:50–2:15 | Open the member link. The card says the link matches, the audit count, the addresses. Tap the spend. The sheet names Ibou + Coumba, the script, the sats, and the sentence about Bitcoin bytes. | A member has no key and no account. This phone checked the transaction itself. The database did not tell it who signed. |
-| 2:15–2:35 | "Recover too early." Blocked, `non-BIP68-final`. Mine 10. The row says Awa · recovery. | The assembly path is real, and it is late on purpose. Too early, Bitcoin refuses. After the delay, one officer and the assembly can recover. |
-| 2:35–2:50 | The README limits, then the four next steps. | This is regtest. The price was a fixture. Nobody has audited it. Zero associations use it. Next is one public domain, a real price, a longer delay, and a second pair of eyes before mainnet. Lightning would put the pot on a node. We did not build that. |
+Order: the problem and who it is for, with "zero associations use Koinon" said out loud. Then the rule, one `pnpm e2e` run, the fund on two phones (regtest said before the first spend), two refusals in the refusing party's own words, the 15,000 F spend (38,113 sats on screen), the member check on a phone, the early recovery refused, and the README limits and next steps.
 
-Cut anything that makes it longer than three minutes. The refusal shots matter more than the create shot.
+The voice in the file is a neural narrator, not a person. A recording of your own voice is better for the judges (`--voiceover`, see `docs/VIDEO.md`). Upload both `.srt` files with the video.

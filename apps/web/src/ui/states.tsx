@@ -7,8 +7,8 @@ import { IconAlert } from "./icons";
 
 export function EmptyState({ icon, title, body, action }: { icon: ReactNode; title: string; body?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-[24px] bg-card px-6 py-8 text-center">
-      <span className="mb-1 grid size-14 place-items-center rounded-full bg-surface text-ink-3 shadow-[0_2px_8px_-4px_rgb(0_0_0/0.15)]">{icon}</span>
+    <div className="flex flex-col items-center gap-2 rounded-[24px] bg-surface px-6 py-8 text-center ring-1 ring-line">
+      <span className="mb-1 grid size-14 place-items-center rounded-full bg-card text-ink-3">{icon}</span>
       <p className="text-[15.5px] font-bold">{title}</p>
       {body ? <p className="max-w-[260px] text-[13.5px] leading-snug text-ink-2">{body}</p> : null}
       {action ? <div className="mt-3 w-full">{action}</div> : null}
@@ -22,7 +22,7 @@ export function ErrorState({ error, onRetry, title }: { error: unknown; onRetry?
   const code = errorCode(error);
   const offline = Boolean(error && typeof error === "object" && "status" in error && (error as { status: unknown }).status === 0);
   return (
-    <div role="alert" className="flex flex-col items-center gap-2 rounded-[24px] bg-card px-6 py-7 text-center">
+    <div role="alert" className="flex flex-col items-center gap-2 rounded-[24px] bg-surface px-6 py-7 text-center ring-1 ring-line">
       <span className="mb-1 grid size-12 place-items-center rounded-full bg-bad-soft text-bad">
         <IconAlert size={20} />
       </span>

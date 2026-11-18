@@ -180,16 +180,21 @@ export function SpendScreen({ role }: { role: OfficerRole }) {
             </span>
           </div>
           <div className="mt-1 flex cursor-text items-baseline gap-1.5" onClick={() => document.getElementById(amountId)?.focus()}>
-            <input
-              id={amountId}
-              inputMode="numeric"
-              autoComplete="off"
-              value={shown}
-              placeholder="0"
-              onChange={(event) => setDigits(event.target.value.replace(/\D/g, "").slice(0, 7))}
-              style={{ width: `${Math.max(shown.length, 1) * 0.62 + 0.2}em` }}
-              className="tabular min-w-0 max-w-full bg-transparent text-[40px] font-bold leading-tight tracking-[-0.03em] placeholder:text-ink-3 focus:outline-none"
-            />
+            <span className="inline-grid min-w-0 max-w-full">
+              <span aria-hidden className="tabular invisible col-start-1 row-start-1 whitespace-pre text-[40px] font-bold leading-tight tracking-[-0.03em]">
+                {shown || "0"}
+              </span>
+              <input
+                id={amountId}
+                inputMode="numeric"
+                autoComplete="off"
+                size={1}
+                value={shown}
+                placeholder="0"
+                onChange={(event) => setDigits(event.target.value.replace(/\D/g, "").slice(0, 7))}
+                className="tabular col-start-1 row-start-1 w-full min-w-0 bg-transparent text-[40px] font-bold leading-tight tracking-[-0.03em] placeholder:text-ink-3 focus:outline-none"
+              />
+            </span>
             <span className="text-[22px] font-bold text-ink-3">F</span>
           </div>
           <p className={`tabular text-[13px] ${amountError ? "font-semibold text-bad" : "text-ink-3"}`}>

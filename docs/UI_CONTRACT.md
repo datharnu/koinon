@@ -45,7 +45,7 @@ The screens that exist are `/`, `/app`, `/fonds/:id`, and `/cosign`. `/app` at 1
 
 Who: a member, with no key.
 
-Data: `GET /v1/funds/:id` for `balance_sats`, `balance_xof`, `chain_tip`, and `rate`. `GET /v1/funds/:id/ledger` for each row: `kind` (`contribution` or `spend`), `sats`, `xof_at_receipt`, `confirmations`, `txid`, `fee_sats`, `index`, `indexes`. A recovery spend (`request_id` null) uses `indexes` to name whose due left, e.g. "Awa · recovery".
+Data: `GET /v1/funds/:id` for `balance_sats`, `balance_xof`, `ledger_xof`, `chain_tip`, and `rate`. The headline is `ledger_xof` (the sum of the franc rows: dues at receipt, less each approved spend amount); `balance_xof` (the sats at the current rate) shows beside the sats only when it differs. `GET /v1/funds/:id/ledger` for each row: `kind` (`contribution` or `spend`), `sats`, `xof_at_receipt`, `confirmations`, `txid`, `fee_sats`, `index`, `indexes`. A recovery spend (`request_id` null) uses `indexes` to name whose due left, e.g. "Awa · recovery".
 
 Actions: refresh. The client does not send coins. A contribution appears only after the indexer sees it, which is after a mined block in this demo. Until then the state is `UNKNOWN`, not a new row.
 

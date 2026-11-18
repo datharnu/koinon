@@ -56,6 +56,31 @@ export function balanceSats(db: DatabaseSync, fundId: string): bigint {
   return rows.reduce((sum, row) => sum + BigInt(row.sats), 0n);
 }
 
+/**
+ * Francs as the ledger rows show them: each due at receipt, less each spend's approved amount
+ * (or, for a recovery with no request, the francs of the coins it consumed). Fees are sats only.
+ * Null when any row has no franc value, so the client falls back to the sats.
+ */
+export function ledgerXof(db: DatabaseSync, fundId: string): bigint | null {
+  const dues = db.prepare("SELECT xof_at_receipt FROM utxos WHERE fund_id = ? AND change = 0").all(fundId) as {
+    xof_at_receipt: string | null;
+  }[];
+  let total = 0n;
+  for (const row of dues) {
+    if (row.xof_at_receipt === null) return null;
+    total += BigInt(row.xof_at_receipt);
+  }
+  const spends = db
+    .prepare("SELECT r.amount_xof, s.xof_at_spend FROM spends s LEFT JOIN requests r ON r.id = s.request_id WHERE s.fund_id = ?")
+    .all(fundId) as { amount_xof: string | null; xof_at_spend: string | null }[];
+  for (const row of spends) {
+    const out = row.amount_xof ?? row.xof_at_spend;
+    if (out === null) return null;
+    total -= BigInt(out);
+  }
+  return total;
+}
+
 function account(role: Role, xpub: string): Account {
   return { role, xpub, path: ACCOUNT_PATH };
 }

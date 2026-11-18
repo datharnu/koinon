@@ -101,6 +101,14 @@ function keyCopy(finger: Fingerprint, t: (fr: string, en: string) => string): { 
       body: t("Les quatre clés publiques et le délai sont ceux du fragment #.", "The four public keys and the delay are the ones in the # fragment."),
     };
   }
+  if (finger === "phone") {
+    return {
+      tone: "good",
+      chip: t("Ce téléphone", "This phone"),
+      title: t("Les clés correspondent à ce téléphone", "Keys match this phone"),
+      body: t("L'adresse n'a pas d'empreinte. Les quatre clés publiques sont celles créées ici.", "This address has no fingerprint. The four public keys are the ones created here."),
+    };
+  }
   if (finger === "missing") {
     return {
       tone: "warn",

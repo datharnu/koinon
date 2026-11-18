@@ -70,6 +70,8 @@ export interface FundView {
   change_address: string;
   balance_sats: string;
   balance_xof: string | null;
+  /** Sum of the franc amounts on the ledger rows. Null if any row has no franc value. */
+  ledger_xof: string | null;
   chain_tip: number;
   rate: RateSnapshot;
 }

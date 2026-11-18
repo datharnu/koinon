@@ -101,7 +101,7 @@ function ToastCard({ toast, onClose, onHold, onRelease }: { toast: Toast; onClos
           ) : null}
           {open && toast.detail ? <p className="mt-2 break-all rounded-xl bg-card p-2.5 font-mono text-[11.5px] leading-relaxed text-ink-2">{toast.detail}</p> : null}
         </div>
-        <button type="button" onClick={onClose} aria-label="Fermer" className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-card hover:text-ink">
+        <button type="button" onClick={onClose} aria-label={t("Fermer", "Close")} className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-card hover:text-ink">
           <IconX size={15} />
         </button>
       </div>

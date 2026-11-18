@@ -8,7 +8,8 @@ import { Avatar } from "../ui/avatar";
 import { IconCoins, IconLifebuoy, IconSend } from "../ui/icons";
 import { EmptyState, ErrorState, Skeleton } from "../ui/states";
 import { ProofSheet } from "../proof/ProofSheet";
-import { fingerprintStatus, useInspection } from "../proof/load";
+import { useDemoOptional } from "./context";
+import { fingerprintStatus, localFingerprint, useInspection } from "../proof/load";
 import { whoSigned } from "../proof/names";
 import { Group, IconBubble, Row } from "./ui";
 
@@ -102,9 +103,9 @@ function ContributionRow({ entry, name, onOpen }: { entry: LedgerEntry; name?: s
       title={label}
       subtitle={<Confirmations count={entry.confirmations} />}
       right={
-        <span className="flex max-w-[46%] flex-col items-end">
-          <span className="tabular text-[15px] font-semibold text-good">+{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}</span>
-          <span className="truncate text-[12px] text-ink-3">{t("Preuve Bitcoin", "Bitcoin proof")}</span>
+        <span className="flex flex-col items-end">
+          <span className="tabular whitespace-nowrap text-[15px] font-semibold text-good">+{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}</span>
+          <span className="whitespace-nowrap text-[12px] text-ink-3">{t("Preuve Bitcoin", "Bitcoin proof")}</span>
         </span>
       }
     />
@@ -133,8 +134,8 @@ function SpendRow({ fundId, entry, recovered = [], onOpen }: { fundId: string; e
         title={who ? t(`${who} · récupération`, `${who} · recovery`) : t("Récupération par l'assemblée", "Assembly recovery")}
         subtitle={<Confirmations count={entry.confirmations} />}
         right={
-          <span className="flex max-w-[46%] flex-col items-end">
-            <span className="tabular text-[15px] font-semibold">
+          <span className="flex flex-col items-end">
+            <span className="tabular whitespace-nowrap text-[15px] font-semibold">
               −{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}
             </span>
             <SignerLine fundId={fundId} txid={entry.txid} />
@@ -162,8 +163,8 @@ function RequestedSpendRow({ fundId, entry, requestId, onOpen }: { fundId: strin
       title={request.data?.purpose ?? t("Dépense", "Spend")}
       subtitle={<Confirmations count={entry.confirmations} />}
       right={
-        <span className="flex max-w-[46%] flex-col items-end">
-          <span className="tabular text-[15px] font-semibold">−{request.data ? xof(request.data.amount_xof, lang) : `${sats(entry.sats, lang)} sats`}</span>
+        <span className="flex flex-col items-end">
+          <span className="tabular whitespace-nowrap text-[15px] font-semibold">−{request.data ? xof(request.data.amount_xof, lang) : `${sats(entry.sats, lang)} sats`}</span>
           <SignerLine fundId={fundId} txid={entry.txid} />
         </span>
       }
@@ -175,6 +176,7 @@ function RequestedSpendRow({ fundId, entry, requestId, onOpen }: { fundId: strin
 function SignerLine({ fundId, txid }: { fundId: string; txid: string }) {
   const { t, lang } = usePrefs();
   const fund = useFund(fundId);
+  const demo = useDemoOptional();
   const proof = useInspection(fundId, txid);
   let label = t("Preuve Bitcoin", "Bitcoin proof");
   if (proof.isError) label = t("Preuve indisponible", "Proof unavailable");
@@ -182,13 +184,13 @@ function SignerLine({ fundId, txid }: { fundId: string; txid: string }) {
     const seen = proof.data.inspection;
     if (seen.ok && seen.direction === "spend" && seen.signers.length > 0) {
       const path = seen.path === "B" ? t("récupération", "recovery") : t("2 sur 3", "2-of-3");
-      const finger = fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""));
+      const finger = fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""), demo ? localFingerprint(demo.config) : null);
       const who = finger === "mismatch" || finger === "invalid" ? seen.signers.join(" + ") : whoSigned(fund.data, seen.signers, lang);
       label = `${who} · ${path}`;
     } else if (!seen.ok) label = t("Non prouvée", "Not proven");
   }
   return (
-    <span className="max-w-full truncate text-right text-[12px] text-ink-3" title={label}>
+    <span className="max-w-[9.5rem] truncate text-right text-[12px] text-ink-3" title={label}>
       {label}
     </span>
   );

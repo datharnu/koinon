@@ -1,4 +1,4 @@
-import { usePrefs } from "../lib/prefs";
+import { usePrefs, type Lang } from "../lib/prefs";
 import { IconMoon, IconSun } from "./icons";
 
 export function ThemeToggle() {
@@ -32,6 +32,22 @@ export function LangToggle() {
         </button>
       ))}
     </div>
+  );
+}
+
+/** Single-button toggle for tight mobile headers. */
+export function LangPill() {
+  const { lang, setLang, t } = usePrefs();
+  const next: Lang = lang === "fr" ? "en" : "fr";
+  return (
+    <button
+      type="button"
+      onClick={() => setLang(next)}
+      aria-label={t("Switch to English", "Passer en français")}
+      className="press grid h-8 shrink-0 place-items-center rounded-full bg-card px-2.5 text-[12px] font-bold uppercase tracking-wide text-ink-2 hover:bg-card-2 hover:text-ink"
+    >
+      {next}
+    </button>
   );
 }
 

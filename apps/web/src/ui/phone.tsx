@@ -8,8 +8,8 @@ export function PhoneFrame({ children, framed = true, caption, className = "" }:
   if (!framed) return <div className={`relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface ${className}`}>{children}</div>;
   return (
     <figure className={`flex h-full max-h-[min(760px,100%)] min-h-0 w-[372px] max-w-full flex-col items-center gap-3 ${className}`}>
-      <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[44px] bg-surface shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-32px_rgb(20_14_60/0.35)]">
-        {children}
+      <div className="flex min-h-0 w-full flex-1 flex-col rounded-[50px] bg-[#18181b] p-[7px] shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-32px_rgb(20_14_60/0.45)]">
+        <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[43px] bg-surface">{children}</div>
       </div>
       {caption ? <figcaption className="flex shrink-0 items-center gap-2 text-[13.5px] text-ink-2">{caption}</figcaption> : null}
     </figure>

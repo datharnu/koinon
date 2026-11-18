@@ -31,7 +31,7 @@ test("member can check a real spend, and Bitcoin refuses the two attacks", async
   await page.getByRole("button", { name: "Test network" }).click();
   await attack(page, "Ibou spends alone", /NULLFAIL|Signature must be zero|mandatory-script-verify-flag/i);
   await attack(page, "The server swaps the recipient", /PSBT_MISMATCH/);
-  await page.getByRole("dialog").getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Fermer|Close/ }).click();
 
   await page.getByRole("button", { name: "Spend" }).click();
   await page.getByRole("button", { name: "Review" }).click();
@@ -55,7 +55,7 @@ test("member can check a real spend, and Bitcoin refuses the two attacks", async
   await expect(page.getByRole("heading", { name: "Test network" })).toBeVisible();
   await page.getByRole("button", { name: "Mine a block" }).click();
   await expect(visibleText(page, "Paid. The transaction is in a block.")).toBeVisible({ timeout: 90_000 });
-  await page.getByRole("dialog").getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Fermer|Close/ }).click();
 
   await backToHome(page);
   const member = await openMember(page, context);
@@ -69,7 +69,7 @@ test("member can check a real spend, and Bitcoin refuses the two attacks", async
   await expect(sheet.getByText("Ibou + Coumba", { exact: true })).toBeVisible();
   await expect(sheet.getByText("P2WSH 2-of-3 + CSV")).toBeVisible();
   await member.close();
-  await page.getByRole("dialog").getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Fermer|Close/ }).click();
   await dismissToasts(page);
 
   await page.getByRole("button", { name: "Test network" }).click();
@@ -80,7 +80,7 @@ test("member can check a real spend, and Bitcoin refuses the two attacks", async
   await expect(early.getByText(/non-BIP68-final/)).toBeVisible();
   await early.getByRole("button", { name: "Mine 10 blocks and retry" }).click();
   await expect(early.getByText("As designed")).toBeVisible({ timeout: 180_000 });
-  await page.getByRole("dialog").getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Fermer|Close/ }).click();
 
   await backToHome(page);
   const recovery = page.getByRole("button", { name: /Awa · recovery/ });
@@ -93,7 +93,7 @@ function visibleText(page: Page, text: string) {
 }
 
 async function dismissToasts(page: Page) {
-  const close = page.getByRole("status").getByRole("button", { name: "Fermer" });
+  const close = page.getByRole("status").getByRole("button", { name: /Fermer|Close/ });
   while ((await close.count()) > 0) {
     await close.first().click();
   }
@@ -119,7 +119,7 @@ async function openMember(page: Page, context: BrowserContext) {
 async function backToHome(page: Page) {
   for (let step = 0; step < 5; step += 1) {
     if (await page.getByRole("button", { name: "Spend" }).isVisible()) return;
-    const back = page.getByRole("button", { name: "Retour" });
+    const back = page.getByRole("button", { name: /Retour|Back/ });
     if (await back.isVisible()) await back.click();
     else break;
   }

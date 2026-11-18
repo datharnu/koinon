@@ -9,8 +9,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { endpoints, type FundView, type TxProof } from "../lib/http";
 import { useFund, useMembers } from "../lib/queries";
+import type { FundConfig } from "../lib/vault";
 
-export type Fingerprint = "missing" | "invalid" | "match" | "mismatch";
+export type Fingerprint = "missing" | "invalid" | "match" | "mismatch" | "phone";
 
 export function constitutionOf(fund: FundView): Constitution | null {
   const by = Object.fromEntries(fund.officers.map((officer) => [officer.role, officer.xpub]));
@@ -21,16 +22,34 @@ export function constitutionOf(fund: FundView): Constitution | null {
   return { officers: [o1, o2, o3], assembly: fund.assembly.xpub, csvBlocks: fund.csv_blocks };
 }
 
-export function fingerprintStatus(fund: FundView, fragment: string): Fingerprint {
+/** Hash of the keys this browser created. The member link puts the same hash after #. */
+export function localFingerprint(config: FundConfig): string | null {
+  try {
+    return constitutionHash({
+      officers: [config.officers.O1.xpub, config.officers.O2.xpub, config.officers.O3.xpub],
+      assembly: config.assembly.xpub,
+      csvBlocks: config.csvBlocks,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function fingerprintStatus(fund: FundView, fragment: string, localHash?: string | null): Fingerprint {
   const keys = constitutionOf(fund);
   if (!keys) return "mismatch";
-  if (!fragment) return "missing";
-  if (!/^[0-9a-f]{64}$/i.test(fragment)) return "invalid";
+  let serverHash: string;
   try {
-    return constitutionHash(keys) === fragment.toLowerCase() ? "match" : "mismatch";
+    serverHash = constitutionHash(keys);
   } catch {
     return "mismatch";
   }
+  if (!fragment) {
+    if (!localHash) return "missing";
+    return localHash === serverHash ? "phone" : "mismatch";
+  }
+  if (!/^[0-9a-f]{64}$/i.test(fragment)) return "invalid";
+  return serverHash === fragment.toLowerCase() ? "match" : "mismatch";
 }
 
 export function addressCheck(fund: FundView, members: { index: number; address: string }[]) {

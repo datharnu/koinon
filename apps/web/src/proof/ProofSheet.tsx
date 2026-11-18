@@ -8,13 +8,16 @@ import { Button } from "../ui/button";
 import { Sheet } from "../ui/sheet";
 import { ErrorState, Skeleton } from "../ui/states";
 import { useToast } from "../ui/toast";
-import { fingerprintStatus, useInspection } from "./load";
+import { useDemoOptional } from "../demo/context";
+import { fingerprintStatus, localFingerprint, useInspection } from "./load";
 import { proofScope } from "./MemberChecks";
 import { whoSigned } from "./names";
 
 export function ProofSheet({ fundId, entry, onClose }: { fundId: string; entry: LedgerEntry | null; onClose: () => void }) {
   const { t, lang } = usePrefs();
   const fund = useFund(fundId);
+  const demo = useDemoOptional();
+  const localHash = demo ? localFingerprint(demo.config) : null;
   const proof = useInspection(fundId, entry?.txid ?? null);
   const toast = useToast();
   const open = entry !== null;
@@ -51,10 +54,10 @@ export function ProofSheet({ fundId, entry, onClose }: { fundId: string; entry: 
           entry={entry}
           who={
             proof.data.inspection.signers.length
-              ? namedSigners(fund.data, proof.data.inspection.signers, lang)
+              ? namedSigners(fund.data, proof.data.inspection.signers, lang, fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""), localHash))
               : ""
           }
-          namesChecked={fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""))}
+          namesChecked={fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""), localHash)}
           path={proof.data.inspection.path}
           csv={fund.data.csv_blocks}
           ok={proof.data.inspection.ok}
@@ -88,7 +91,7 @@ function ProofBody({
 }: {
   entry: LedgerEntry;
   who: string;
-  namesChecked: "missing" | "invalid" | "match" | "mismatch";
+  namesChecked: "missing" | "invalid" | "match" | "mismatch" | "phone";
   path: "A" | "B" | "unproven";
   csv: number;
   ok: boolean;
@@ -127,7 +130,14 @@ function ProofBody({
         <p className="mt-1 break-words text-[13px] text-ink-3">
           {entry.kind === "spend" ? pathLabel : t("Vers la caisse", "Into the fund")}
         </p>
-        {namesChecked === "match" ? null : (
+        {namesChecked === "match" ? null : namesChecked === "phone" ? (
+          <p className="mt-2 break-words text-[12.5px] leading-snug text-ink-3">
+            {t(
+              "Les clés du serveur sont celles de ce téléphone. L'empreinte du lien membre est dans Inviter.",
+              "The server's keys match this phone. The member fingerprint is on the invite link.",
+            )}
+          </p>
+        ) : (
           <p className="mt-2 break-words text-[12.5px] leading-snug text-warn">
             {namesChecked === "missing"
               ? t("Cette page n'a pas d'empreinte dans l'adresse. Les noms sont les étiquettes du serveur.", "This page has no fingerprint in the address. The names are the server's labels.")
@@ -183,8 +193,12 @@ function Confirmations({ count }: { count: number | null }) {
   return <p className="break-words text-[12.5px] font-semibold text-ink-2">{t(`${label}. Chiffre du coordinateur, pas compté ici.`, `${label}. The coordinator's number, not counted here.`)}</p>;
 }
 
-function namedSigners(fund: Parameters<typeof whoSigned>[0], roles: Parameters<typeof whoSigned>[1], lang: Parameters<typeof whoSigned>[2]): string {
-  const finger = fingerprintStatus(fund, window.location.hash.replace(/^#/, ""));
+function namedSigners(
+  fund: Parameters<typeof whoSigned>[0],
+  roles: Parameters<typeof whoSigned>[1],
+  lang: Parameters<typeof whoSigned>[2],
+  finger: "missing" | "invalid" | "match" | "mismatch" | "phone",
+): string {
   if (finger === "mismatch" || finger === "invalid") return roles.join(" + ");
   return whoSigned(fund, roles, lang);
 }

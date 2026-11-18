@@ -141,7 +141,7 @@ export function InviteSheet({ onClose }: { onClose: () => void }) {
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-brand">
             <IconLink size={18} />
           </span>
-          <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]" title={link}>
+          <span className="min-w-0 flex-1 break-all font-mono text-[12.5px] leading-relaxed" title={link}>
             {link.replace(/^https?:\/\//, "")}
           </span>
         </div>

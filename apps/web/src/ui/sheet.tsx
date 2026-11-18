@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useT } from "../lib/prefs";
 import { IconX } from "./icons";
 
 /**
@@ -20,6 +21,7 @@ export function Sheet({
   contained?: boolean;
   footer?: ReactNode;
 }) {
+  const t = useT();
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -35,7 +37,7 @@ export function Sheet({
   const position = contained ? "absolute" : "fixed";
   return (
     <div className={`${position} inset-0 z-40 flex items-end justify-center ${contained ? "" : "sm:items-center sm:p-6"}`}>
-      <button type="button" aria-label="Fermer" onClick={onClose} className="backdrop-in absolute inset-0 cursor-default bg-black/40" />
+      <button type="button" aria-label={t("Fermer", "Close")} onClick={onClose} className="backdrop-in absolute inset-0 cursor-default bg-black/40" />
       <div
         ref={panel}
         role="dialog"
@@ -55,7 +57,7 @@ export function Sheet({
           ) : (
             <span />
           )}
-          <button type="button" onClick={onClose} aria-label="Fermer" className="press grid size-9 place-items-center rounded-full bg-card text-ink-2 hover:text-ink">
+          <button type="button" onClick={onClose} aria-label={t("Fermer", "Close")} className="press grid size-9 place-items-center rounded-full bg-card text-ink-2 hover:text-ink">
             <IconX size={18} />
           </button>
         </div>

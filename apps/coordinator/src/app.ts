@@ -20,7 +20,7 @@ import { appendAudit } from "./audit.js";
 import type { BitcoinClient } from "./bitcoin.js";
 import { withTx } from "./db.js";
 import type { DemoWallet } from "./demo.js";
-import { balanceSats, fundById, fundKeys, xpubFor, type FundRow } from "./funds.js";
+import { balanceSats, fundById, fundKeys, ledgerXof, xpubFor, type FundRow } from "./funds.js";
 import { fetchBtcEur, RateCache, type RateSnapshot } from "./rate.js";
 import { addSignature, broadcastRequest, createRequest, rejectRequest, requestById } from "./requests.js";
 import { markRescan, scanChain } from "./scan.js";
@@ -203,6 +203,7 @@ function buildServer(deps: AppDeps): FastifyInstance {
       ...publicFund(fund),
       balance_sats: sats.toString(),
       balance_xof: rate.btc_eur ? xofForSats(sats, rate.btc_eur).toString() : null,
+      ledger_xof: ledgerXof(deps.db, fund.id)?.toString() ?? null,
       chain_tip: tip,
       rate,
     };

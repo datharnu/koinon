@@ -16,7 +16,9 @@ const PrefsContext = createContext<Prefs | null>(null);
 
 function initialLang(): Lang {
   const saved = localStorage.getItem("koinon.lang");
-  return saved === "en" ? "en" : "fr";
+  if (saved === "en" || saved === "fr") return saved;
+  if (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("en")) return "en";
+  return "fr";
 }
 
 function initialTheme(): Theme {

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="760" viewBox="0 0 1120 760" role="img" aria-labelledby="title desc">
+  <title id="title">Koinon: the big picture</title>
+  <desc id="desc">Treasurer, secretary, member and the assembly key. The request travels as a NIP-17 gift wrap with no PSBT. A watch-only coordinator on one origin broadcasts to bitcoind. Two signatures are accepted. One signature is NULLFAIL. Recovery before the delay is non-BIP68-final. Regtest, Bitcoin Core 32.1.</desc>
+  <rect width="1120" height="760" fill="#ffffff"/>
+  <text x="560" y="34" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#1c1917">Koinon: the big picture</text>
+  <text x="560" y="56" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#57534e">Two officers sign on their own phones. bitcoind accepts the transaction or it does not. Regtest. Sats have no value.</text>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#44403c"/>
+    </marker>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#b91c1c"/>
+    </marker>
+  </defs>
+
+  <!-- people -->
+  <g font-family="Helvetica, Arial, sans-serif">
+    <rect x="16" y="74" width="262" height="96" rx="10" fill="#f6f1c8" stroke="#e4d98a"/>
+    <text x="32" y="98" font-size="14" font-weight="700" fill="#1c1917">Treasurer's phone</text>
+    <text x="32" y="118" font-size="12" fill="#44403c">Holds a key. Signs on the device.</text>
+    <text x="32" y="136" font-size="12" fill="#44403c">WebAuthn, or an 8-digit code.</text>
+    <text x="32" y="154" font-size="12" fill="#78716c">The key never leaves the phone.</text>
+
+    <rect x="292" y="74" width="262" height="96" rx="10" fill="#f6f1c8" stroke="#e4d98a"/>
+    <text x="308" y="98" font-size="14" font-weight="700" fill="#1c1917">Secretary's phone</text>
+    <text x="308" y="118" font-size="12" fill="#44403c">Rebuilds the transaction.</text>
+    <text x="308" y="136" font-size="12" fill="#44403c">Signs, or refuses PSBT_MISMATCH.</text>
+    <text x="308" y="154" font-size="12" fill="#78716c">The check runs before the signature.</text>
+
+    <rect x="568" y="74" width="262" height="96" rx="10" fill="#f6f1c8" stroke="#e4d98a"/>
+    <text x="584" y="98" font-size="14" font-weight="700" fill="#1c1917">Member's phone</text>
+    <text x="584" y="118" font-size="12" fill="#44403c">No key. Read-only link.</text>
+    <text x="584" y="136" font-size="12" fill="#44403c">Checks the raw transaction.</text>
+    <text x="584" y="154" font-size="12" fill="#78716c">Does not load the signing code.</text>
+
+    <rect x="844" y="74" width="260" height="96" rx="10" fill="#f6f1c8" stroke="#e4d98a"/>
+    <text x="860" y="98" font-size="14" font-weight="700" fill="#1c1917">Assembly key</text>
+    <text x="860" y="118" font-size="12" fill="#44403c">With one officer, after the delay.</text>
+    <text x="860" y="136" font-size="12" fill="#44403c">Not a second way to spend today.</text>
+    <text x="860" y="154" font-size="12" fill="#78716c">Regtest waits 10 blocks.</text>
+  </g>
+
+  <!-- one origin -->
+  <rect x="16" y="196" width="520" height="318" rx="14" fill="#fafaf9" stroke="#a8a29e" stroke-dasharray="5 4"/>
+  <text x="32" y="220" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#44403c">One origin · 102-68-84-31.sslip.io</text>
+  <text x="32" y="238" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#78716c">Homepage, /app, /v1 and /relay. Caddy on the VPS. A passkey belongs to this host.</text>
+
+  <rect x="32" y="254" width="236" height="112" rx="10" fill="#ffffff" stroke="#d6d3d1"/>
+  <text x="46" y="278" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1c1917">Nostr relay</text>
+  <text x="46" y="300" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">NIP-17 gift wrap.</text>
+  <text x="46" y="318" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">The request. No PSBT.</text>
+  <text x="46" y="344" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#78716c">Accepts any publisher.</text>
+
+  <rect x="284" y="254" width="232" height="112" rx="10" fill="#ffffff" stroke="#d6d3d1"/>
+  <text x="298" y="278" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1c1917">Watch-only coordinator</text>
+    <text x="298" y="300" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">Members, ledger, requests, audit.</text>
+    <text x="298" y="318" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">No private key.</text>
+    <text x="298" y="344" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#78716c">One signature still fails.</text>
+
+  <rect x="32" y="382" width="484" height="112" rx="10" fill="#ffffff" stroke="#d6d3d1"/>
+  <text x="46" y="406" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1c1917">Price shown on screen</text>
+  <text x="46" y="428" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">The demo uses a fixture of 60,000 EUR. 1,000 F locked at 2,541 sats.</text>
+  <text x="46" y="446" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">A live mempool.space request timed out. The server returned</text>
+  <text x="46" y="464" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">RATE_UNAVAILABLE and did not invent a price.</text>
+  <text x="46" y="480" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#78716c">Francs on screen are that fixture, not a market rate.</text>
+
+  <!-- chain -->
+  <rect x="572" y="196" width="532" height="318" rx="14" fill="#e7f8f3" stroke="#0f766e"/>
+  <text x="590" y="222" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#115e59">bitcoind · Bitcoin Core 32.1 · regtest</text>
+  <text x="590" y="244" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#115e59">P2WSH 2-of-3, plus a CSV delay for the assembly path. The fund sits here.</text>
+
+  <rect x="590" y="262" width="246" height="108" rx="10" fill="#dcfce7" stroke="#15803d"/>
+  <text x="604" y="286" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#14532d">Two signatures</text>
+  <text x="604" y="308" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">bitcoind accepted it.</text>
+  <text x="604" y="326" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">1 confirmation.</text>
+  <text x="604" y="350" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#166534">17 Nov 2026, pnpm kill-test.</text>
+
+  <rect x="850" y="262" width="236" height="108" rx="10" fill="#fde8e6" stroke="#b91c1c"/>
+  <text x="864" y="286" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#7f1d1d">One signature</text>
+  <text x="864" y="308" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#7f1d1d">bitcoind refused it.</text>
+  <text x="864" y="326" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#7f1d1d">NULLFAIL. Nothing moved.</text>
+  <text x="864" y="350" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#991b1b">The screen is not the guard.</text>
+
+  <rect x="590" y="384" width="246" height="110" rx="10" fill="#fde8e6" stroke="#b91c1c"/>
+  <text x="604" y="408" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#7f1d1d">Recovery too early</text>
+  <text x="604" y="430" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#7f1d1d">non-BIP68-final.</text>
+  <text x="604" y="448" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#7f1d1d">The delay is not over.</text>
+  <text x="604" y="472" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#991b1b">N is 10 here. About 4,320 was not used.</text>
+
+  <rect x="850" y="384" width="236" height="110" rx="10" fill="#dcfce7" stroke="#15803d"/>
+  <text x="864" y="408" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#14532d">After the delay</text>
+  <text x="864" y="430" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">One officer and the assembly.</text>
+  <text x="864" y="448" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">bitcoind accepted it.</text>
+  <text x="864" y="472" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#166534">That exit is intended. It is late on purpose.</text>
+
+  <!-- arrows between the two regions -->
+  <line x1="536" y1="310" x2="568" y2="310" stroke="#44403c" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="552" y="300" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#44403c">raw tx</text>
+
+  <!-- bottom: what the member checks -->
+  <rect x="16" y="534" width="1088" height="168" rx="14" fill="#fafaf9" stroke="#a8a29e" stroke-dasharray="5 4"/>
+  <text x="32" y="560" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#44403c">What the member's phone checks, from the Bitcoin transaction</text>
+
+  <rect x="32" y="576" width="520" height="106" rx="10" fill="#dcfce7" stroke="#15803d"/>
+  <text x="46" y="600" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#14532d">Checked on the phone</text>
+  <text x="46" y="622" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">The link fingerprint. The SHA-256 audit chain.</text>
+  <text x="46" y="640" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">Addresses re-derived. BIP143 signatures, @noble/curves.</text>
+  <text x="46" y="658" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#14532d">Then it names who signed. The database does not.</text>
+
+  <rect x="568" y="576" width="516" height="106" rx="10" fill="#ffffff" stroke="#d6d3d1"/>
+  <text x="582" y="600" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#44403c">Not checked there</text>
+  <text x="582" y="622" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">bitcoind's script flags. The block count. The miniscript compiler.</text>
+  <text x="582" y="640" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#44403c">A swapped recipient is refused on the secretary's phone, before a signature.</text>
+  <text x="582" y="658" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#78716c">Two officers who agree can spend. That is the rule. No audit yet.</text>
+
+  <text x="560" y="732" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#78716c">The coordinator can hand a phone a raw transaction. It cannot make a bad signature verify.</text>
+  <text x="560" y="750" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#78716c">Lightning is not here. A node that receives into a channel would hold the coins.</text>
+</svg>

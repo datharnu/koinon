@@ -31,3 +31,8 @@ export function useDemo(): Demo {
   if (!value) throw new Error("DemoProvider missing");
   return value;
 }
+
+/** Member pages have no officer keys. Callers must handle null. */
+export function useDemoOptional(): Demo | null {
+  return useContext(DemoContext);
+}

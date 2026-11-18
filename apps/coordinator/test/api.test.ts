@@ -437,6 +437,28 @@ describe("coordinator", () => {
     });
     const fund = await call(app, "GET", `/v1/funds/${fundId}`);
     expect(fund.json.balance_sats).toBe("0");
+    expect(fund.json.ledger_xof).toBe("0");
+    await app.close();
+  });
+
+  it("adds the francs the rows show, not the francs of the summed sats", async () => {
+    const blocks = [Buffer.alloc(80).toString("hex")];
+    const db = openDatabase(":memory:");
+    const app = buildApp({ db, bitcoin: chain(blocks, []), fetchEur: async () => "60000", now: () => NOW, logger: false });
+    const created = await call(app, "POST", "/v1/funds", fundBody());
+    const fundId = created.json.id as string;
+    for (let index = 0; index < 12; index += 1) {
+      const member = await call(app, "POST", `/v1/funds/${fundId}/members`, { pseudonym: `M${index}` });
+      blocks.push(payBlock(member.json.address as string, 12_705n));
+    }
+    const ledger = await call(app, "GET", `/v1/funds/${fundId}/ledger`);
+    const rows = ledger.json.entries as { xof_at_receipt: string }[];
+    expect(rows).toHaveLength(12);
+    expect(rows.every((row) => row.xof_at_receipt === "5000")).toBe(true);
+    const fund = await call(app, "GET", `/v1/funds/${fundId}`);
+    expect(fund.json.balance_sats).toBe("152460");
+    expect(fund.json.balance_xof).toBe("60004");
+    expect(fund.json.ledger_xof).toBe("60000");
     await app.close();
   });
 });

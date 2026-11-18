@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { DemoProvider } from "../demo/context";
+import { useOfficerRequests } from "../demo/hooks";
 import { CheatSheet, FloatingToolbar, NetworkSheet } from "../demo/Network";
 import { PhoneApp } from "../demo/PhoneApp";
 import { Note, ScreenHeader, StickyFooter } from "../demo/ui";
 import { endpoints } from "../lib/api";
 import { createDemoFund, errorCode, type OfficerRole, type SetupStep } from "../lib/flows";
 import { useMedia } from "../lib/media";
-import { createPasskey, passkeyAvailable, passkeyPrfOffered, PasskeyError, readUnlock, unlockWithPasskey, writeUnlock, type UnlockMethod } from "../lib/passkey";
+import { createPasskey, passkeyAvailable, passkeyHostOk, passkeyPrfOffered, PasskeyError, readUnlock, unlockWithPasskey, writeUnlock, type UnlockMethod } from "../lib/passkey";
 import { PEOPLE, roleTitle } from "../lib/people";
 import { usePrefs } from "../lib/prefs";
 import { forgetFund, openSecret, readConfig, type FundConfig, type Secret } from "../lib/vault";
@@ -20,7 +21,7 @@ import { IconAlert, IconCheck, IconCube, IconPasskey, IconX, Logo } from "../ui/
 import { PhoneFrame } from "../ui/phone";
 import { PinPad } from "../ui/pinpad";
 import { Sheet } from "../ui/sheet";
-import { LangToggle, ThemeToggle } from "../ui/toggles";
+import { LangPill, LangToggle, ThemeToggle } from "../ui/toggles";
 
 const ROLES: Role[] = ["O1", "O2", "O3", "K"];
 
@@ -70,7 +71,7 @@ export default function Demo() {
   );
 }
 
-function StageBar({ children }: { children?: ReactNode }) {
+function StageBar({ children, center }: { children?: ReactNode; center?: ReactNode }) {
   const { t } = usePrefs();
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 px-5">
@@ -80,7 +81,7 @@ function StageBar({ children }: { children?: ReactNode }) {
       <Chip tone="warn" dot className="max-sm:hidden">
         {t("Démo · regtest", "Demo · regtest")}
       </Chip>
-      <div className="flex-1" />
+      <div className="flex flex-1 justify-center">{center}</div>
       {children}
       <LangToggle />
       <ThemeToggle />
@@ -90,9 +91,22 @@ function StageBar({ children }: { children?: ReactNode }) {
 
 /** Before the keys are open, the phone shows the welcome, setup or unlock screen. */
 function Onboarding({ children }: { children: ReactNode }) {
+  const { t } = usePrefs();
   const framed = useMedia("(min-width: 640px)");
   if (!framed) {
-    return <div className="flex h-dvh flex-col bg-surface">{children}</div>;
+    return (
+      <div className="flex h-dvh flex-col bg-surface">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4 pt-[env(safe-area-inset-top)]">
+          <Link href="/" aria-label={t("Accueil Koinon", "Koinon home")} className="shrink-0">
+            <Logo size={26} withName />
+          </Link>
+          <div className="flex-1" />
+          <LangToggle />
+          <ThemeToggle />
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </div>
+    );
   }
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -122,7 +136,7 @@ function usePasskeyOffer(): boolean {
 
 function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<Role, Secret>) => void }) {
   const { t } = usePrefs();
-  const passkeys = usePasskeyOffer();
+  const passkeys = usePasskeyOffer() && passkeyHostOk();
   const health = useHealth();
   const [name, setName] = useState("Association des ressortissants de Kolda");
   const [view, setView] = useState<SetupView>({ name: "welcome" });
@@ -138,7 +152,7 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
       const config = await createDemoFund({
         name: name.trim(),
         pin: secret,
-        labels: { O1: "Trésorier", O2: "Secrétaire", O3: "Président", K: "Assemblée" },
+        labels: { O1: t("Trésorier", "Treasurer"), O2: t("Secrétaire", "Secretary"), O3: t("Président", "President"), K: t("Assemblée", "Assembly") },
         onStep: (step, done, total) => setProgress({ step, done, total }),
       });
       writeUnlock(method);
@@ -194,7 +208,7 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
   return (
     <>
       <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="relative mx-3 mt-3 flex flex-col items-center overflow-hidden rounded-[32px] bg-brand-soft px-6 pb-8 pt-10">
+        <div className="relative mx-3 mt-3 flex flex-col items-center overflow-hidden rounded-[32px] bg-brand-soft px-6 pb-7 pt-7 sm:pb-8 sm:pt-10">
           <Logo size={56} />
           <div className="mt-6 flex -space-x-3">
             {(["O1", "O2", "O3"] as const).map((role, index) => (
@@ -234,6 +248,14 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
               </button>
             </Note>
           ) : null}
+          {!passkeyHostOk() ? (
+            <Note icon={<IconAlert size={16} />}>
+              {t(
+                "Touch ID ne marche pas sur une adresse en chiffres. Sur cette page, utilisez le code à 8 chiffres.",
+                "Touch ID does not work on a numeric address. On this page, use the 8-digit code.",
+              )}
+            </Note>
+          ) : null}
           {failure ? (
             <Note tone="bad" icon={<IconAlert size={16} />}>
               {failure === "NO_PRF"
@@ -241,7 +263,12 @@ function Setup({ onCreated }: { onCreated: (config: FundConfig, secrets: Record<
                     "Ce navigateur ne peut pas dériver un secret de la passkey (Windows Hello, ou Safari trop ancien). Utilisez un code à 8 chiffres sur cet appareil.",
                     "This browser can't derive a secret from the passkey (Windows Hello, or Safari that's too old). Use an 8-digit code on this device.",
                   )
-                : t(`La création a échoué (${failure}). Rien n'est perdu : réessayez.`, `Creation failed (${failure}). Nothing is lost: try again.`)}
+                : failure === "HOST"
+                  ? t(
+                      "Touch ID a été refusé parce que l'adresse est 127.0.0.1. Utilisez le code à 8 chiffres.",
+                      "Touch ID was refused because the address is 127.0.0.1. Use the 8-digit code.",
+                    )
+                  : t(`La création a échoué (${failure}). Rien n'est perdu : réessayez.`, `Creation failed (${failure}). Nothing is lost: try again.`)}
             </Note>
           ) : null}
         </div>
@@ -416,6 +443,33 @@ function Caption({ role }: { role: OfficerRole }) {
   );
 }
 
+function OfficerPendingDot({ role }: { role: OfficerRole }) {
+  const { toSign } = useOfficerRequests(role);
+  if (role !== "O2" || toSign.length === 0) return null;
+  return <span aria-hidden className="size-2 shrink-0 rounded-full bg-brand" />;
+}
+
+/** A reading guide, not a progress tracker: it does not claim which step the fund is on. */
+function DemoPath() {
+  const { t } = usePrefs();
+  const steps = [
+    [t("Ibou demande", "Ibou asks"), t("Dépenser", "Spend")],
+    [t("Coumba approuve", "Coumba approves"), t("Demandes", "Requests")],
+    [t("Un membre vérifie", "A member checks"), t("Inviter", "Invite")],
+  ] as const;
+  return (
+    <ol aria-label={t("Le parcours", "The walkthrough")} className="flex items-center gap-1 rounded-full bg-surface/70 p-1 ring-1 ring-line">
+      {steps.map(([label, where], index) => (
+        <li key={label} className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[13px]">
+          <span className="grid size-6 place-items-center rounded-full bg-brand-soft font-mono text-[12px] font-bold text-brand-ink">{index + 1}</span>
+          <span className="font-semibold text-ink">{label}</span>
+          <span className="text-ink-3">· {where}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 const STAGE_ROLES: OfficerRole[] = ["O1", "O2"];
 
 function Stage() {
@@ -439,6 +493,7 @@ function Stage() {
         >
           <Avatar name={PEOPLE[role].name} tone={PEOPLE[role].tone} size={24} />
           <span className="truncate">{PEOPLE[role].first}</span>
+          <OfficerPendingDot role={role} />
         </button>
       ))}
     </div>
@@ -447,7 +502,7 @@ function Stage() {
   if (wide) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
-        <StageBar>
+        <StageBar center={<DemoPath />}>
           <ButtonLink href="/" variant="ghost" size="sm" icon={<IconX size={16} />}>
             {t("Quitter", "Exit")}
           </ButtonLink>
@@ -492,6 +547,7 @@ function Stage() {
             <Logo size={28} withName={false} />
           </Link>
           {switcher(true)}
+          <LangPill />
           <button type="button" onClick={() => setNetwork(true)} aria-label={t("Réseau de test", "Test network")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink hover:bg-card">
             <IconCube size={18} />
           </button>

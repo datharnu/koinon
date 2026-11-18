@@ -1,4 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
+import { useT } from "../lib/prefs";
 import { IconChevronLeft, IconChevronRight } from "../ui/icons";
 
 export type Route =
@@ -31,10 +32,11 @@ export function useNav(): Nav {
 
 /** Title row for a pushed screen. */
 export function ScreenHeader({ title, onBack, right, tone = "plain" }: { title: string; onBack?: () => void; right?: ReactNode; tone?: "plain" | "brand" }) {
+  const t = useT();
   return (
     <header className={`flex shrink-0 items-center gap-2 px-3 pb-3 pt-[max(1rem,var(--demo-chrome))] ${tone === "brand" ? "bg-brand-soft" : ""}`}>
       {onBack ? (
-        <button type="button" onClick={onBack} aria-label="Retour" className="press grid size-10 place-items-center rounded-full text-ink hover:bg-card">
+        <button type="button" onClick={onBack} aria-label={t("Retour", "Back")} className="press grid size-10 place-items-center rounded-full text-ink hover:bg-card">
           <IconChevronLeft size={22} />
         </button>
       ) : (
@@ -66,7 +68,7 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
 }
 
 export function Group({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`overflow-hidden rounded-[22px] bg-card ${className}`}>{children}</div>;
+  return <div className={`overflow-hidden rounded-[22px] bg-surface ring-1 ring-line ${className}`}>{children}</div>;
 }
 
 /** A list row: icon, title and subtitle, then a value or a chevron. */
@@ -105,7 +107,7 @@ export function Row({
   const className = "flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 [&+&]:border-t [&+&]:border-line";
   if (onClick) {
     return (
-      <button type="button" data-testid={testId} onClick={onClick} className={`${className} press transition-colors hover:bg-card-2 active:scale-[0.99]`}>
+      <button type="button" data-testid={testId} onClick={onClick} className={`${className} press transition-colors hover:bg-card active:scale-[0.99]`}>
         {body}
       </button>
     );
@@ -115,7 +117,7 @@ export function Row({
 
 export function IconBubble({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "brand" | "good" | "bad" | "warn" }) {
   const tones = {
-    neutral: "bg-surface text-ink",
+    neutral: "bg-card text-ink",
     brand: "bg-brand-soft text-brand",
     good: "bg-good-soft text-good",
     bad: "bg-bad-soft text-bad",

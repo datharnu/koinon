@@ -1,14 +1,25 @@
 <div align="center">
 
+<img src="apps/web/public/favicon.svg" width="72" height="72" alt="Koinon logo" />
+
 # Koinon
 
 **The treasurer of a shared fund cannot move the money alone.**
 
-[Site](https://koinon-ten.vercel.app) · [Run it](#getting-started) · [What works today](#status) · [The proof](#evidence) · [Policy](docs/POLICY.md)
+[Site](https://102-68-84-31.sslip.io) · [Watch the film (2:15)](docs/media/koinon-demo.mp4) · [Demo](https://102-68-84-31.sslip.io/app) · [Run it](#getting-started) · [What works today](#status) · [The proof](#evidence) · [Policy](docs/POLICY.md)
 
-<sub>BITCOIN REGTEST / NOSTR / WEB / CLI</sub>
+<a href="https://102-68-84-31.sslip.io/app"><img alt="Network: Bitcoin regtest" src="docs/badges/network.svg" /></a>
+<img alt="Bitcoin: Core 32.1" src="docs/badges/bitcoin.svg" />
+<img alt="Script: 2-of-3 + CSV" src="docs/badges/script.svg" />
+<img alt="Messages: Nostr NIP-17" src="docs/badges/nostr.svg" />
+<img alt="Mainnet: after audit" src="docs/badges/mainnet.svg" />
+<a href="LICENSE"><img alt="License: MIT" src="docs/badges/license.svg" /></a>
 
-The homepage is on Vercel. The spend rule ran on a local regtest node, Bitcoin Core 32.1, on 17 Nov 2026. It did not run on mainnet. Docker Compose has run in GitHub Actions, not as a public demo.
+<p align="center">
+  <a href="docs/media/koinon-demo.mp4"><img src="docs/media/film-poster.jpg" width="820" alt="Watch the Koinon film, 2 minutes 15. Recorded 18 Nov 2026 from the local app: two phones, a 60,000 F fund, the refusals, the member check, and the README limits. Regtest. The voice is a neural draft, not a person." /></a>
+</p>
+
+The public demo is one HTTPS origin on a Nigeria VPS: homepage, `/app`, `/v1`, and `/relay` on the same host. The spend rule runs on regtest, Bitcoin Core 32.1. It did not run on mainnet. The film is that demo, recorded locally. It is not a mainnet payment.
 
 </div>
 
@@ -46,7 +57,7 @@ The phone is a Bitcoin wallet. It derives BIP39 keys on `m/48'/1'/0'/2'`, builds
 | Usefulness and local impact | A dahira, a GIE, or a club whose treasurer can empty the Wave account today. The member link shows the pot in francs. | Zero associations are using it. The rows below are targets, not traction. |
 | Security by design | bitcoind refuses one signature. The officer's phone refuses a swapped recipient. The member's phone checks the witness. | Regtest. No audit. Two officers who agree can spend. |
 | UX and UI on a slow phone | `/` and `/fonds/:id` do not load the signing code. The measured times are in [Evidence](#evidence). | One headless Chromium on this Mac, not a handset and not the VPS. |
-| Working MVP | `pnpm e2e`, or Docker Compose from [docs/DEPLOY.md](docs/DEPLOY.md). The browser demo is `/app`. | Vercel does not run `/v1` or `/relay`. |
+| Working MVP | [Live demo](https://102-68-84-31.sslip.io/app), `pnpm e2e`, or Compose from [docs/DEPLOY.md](docs/DEPLOY.md). | Regtest faucet. Not mainnet. |
 | Clear pitch and docs | This page, [docs/POLICY.md](docs/POLICY.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md). | Team names are not in the repo. The license is MIT. |
 
 The rubric is on [the Devpost page](https://dakar-bitcoin-hack-2026.devpost.com/). This table is a map to that page. It is not a score. The paste-ready write-up and the demo shot list are in [docs/SUBMISSION.md](docs/SUBMISSION.md).
@@ -60,15 +71,22 @@ The rubric is on [the Devpost page](https://dakar-bitcoin-hack-2026.devpost.com/
 
 **Everything here runs on regtest. Those sats have no value.** A live price from mempool.space was requested once and timed out. The server returned `RATE_UNAVAILABLE` and did not invent a price.
 
-<!-- TODO: add a demo GIF of the two-phone app. The site is live; the recording is not. -->
+The film is [Watch the film (2:15)](docs/media/koinon-demo.mp4). It was recorded 18 Nov 2026 from this app. The voice is a neural draft, not a person. The shot list is [docs/VIDEO.md](docs/VIDEO.md).
 
 <a id="demo"></a>
 
 ## Demo
 
-The site is [https://koinon-ten.vercel.app](https://koinon-ten.vercel.app). It is the Vite app in `apps/web`, static files on Vercel. No login.
+**One URL for judges, Devpost, and this README** — same origin for the pitch and the working app:
 
-That URL is the homepage a judge can read. `/app` is the two-phone demo (Treasurer and Secretary). Vercel does not run bitcoind, the coordinator, or the relay: `GET /v1/health` on that host is 404. Creating a fund, spending, and recovery still need the Docker stack from [docs/DEPLOY.md](docs/DEPLOY.md) (or `pnpm` against a local node). Until that VPS exists, `/app` will say the demo server is not answering.
+| Page | Link |
+| --- | --- |
+| Homepage | [https://102-68-84-31.sslip.io/](https://102-68-84-31.sslip.io/) |
+| Two-phone demo | [https://102-68-84-31.sslip.io/app](https://102-68-84-31.sslip.io/app) |
+
+Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to the coordinator stack in Docker on that VPS. Passkeys and the Nostr websocket are bound to this hostname. Do not send judges to a second host (for example a static-only deploy) for the interactive demo.
+
+Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) should return `{"ok":true,...}`.
 
 The CLI is still the proof that bitcoind refused one signature.
 
@@ -150,6 +168,22 @@ Hypothesis, not a measurement: one group has a treasurer who can empty the pot t
 
 Metrics a pilot would track, and that this repo has not measured: funds onboarded, spends per month, median time from request to the second signature, and requests refused for a mismatch. The measured stand-in is the regtest checklist, not a pilot.
 
+### The problem, sourced
+
+These numbers are why a shared pot is a real object in Senegal. None of them is a count of theft, a count of dahiras, or a Koinon user. The homepage draws the same figures, with the same limits. Read on 18 Nov 2026.
+
+| Figure | What it counts | What it does not count | Source |
+| --- | --- | --- | --- |
+| 425 of 1,000 cases (42.5%) answered yes | Senegal, Global Findex 2025 microdata, survey year 2024. Question fin17c: saved in the past 12 months using an informal savings group or club, or a person outside the family. | A population estimate. The file says the case counts are not summary statistics of the population. The question is wider than a tontine. | [World Bank microdata, fin17c](https://microdata.worldbank.org/catalog/7971/variable/F1/V64?name=fin17c) |
+| Women 57.4%, adults 43.5%, men 28.3%. 2014: 28.6% | EFA Études' weighting of that Findex file, published 23 Oct 2026. Senegal, adults 15 and over. | The unweighted 42.5%. A gap under 3 points is not significant in a survey of about 1,000. The page does not publish the years between 2014 and 2024, and says one jump is not a trend. | [EFA, La tontine en chiffres](https://efa.africa/etude-tontine-en-chiffres) |
+| Senegal 24.1% of UEMOA e-money transaction volume in 2024 (22.7% in 2023). Value share 30.2% (29.9% in 2023). Volume up 24.79% | BCEAO, annual report on digital financial services in the UEMOA for 2024, file dated March 2026. §59 is volume, §60 is value, §34 is the growth. The same report's union total is 11 billion transactions and 160,415 billion CFA francs. The other 2024 shares in §59: Côte d'Ivoire 21.4%, Benin 21.4%, Burkina Faso 18.2%, Mali 10.7%, Togo 3.2%, Guinea-Bissau 0.7%, Niger 0.6%. | Money held by associations. An e-money account still has one holder. Another BCEAO document gives a different union value; it is not blended here. | [BCEAO PDF](https://www.bceao.int/sites/default/files/2026-03/Rapport%20annuel%20sur%20les%20services%20financiers%20num%C3%A9riques%20dans%20l%27UEMOA%20-%202024.pdf) |
+| More than 2,500 solidarity funds, more than 80,000 members, 95% women, 13 regions | Minister Alioune Dione, National Solidarity Fund day in Thiès, reported by APS on 19 Feb 2025. Members pool a fund and make interest-free loans. | A census of tontines or GIEs. Not evidence that a treasurer stole. The APS page returned 404 when fetched on 18 Nov 2026; the same dispatch is on Leral. | [Leral, carrying APS, 19 Feb 2025](https://www.leral.net/Plus-de-2-500-calebasses-de-solidarite-denombrees-a-travers-le-pays_a377683.html) |
+| 6,869 / 6,674 / 6,857 GIE registrations in 2022 / 2023 / 2024 | APIX national RCCM table, row "Immatriculation GIE". Registrations that year. | The stock of GIEs. The same page's APIX-office row is a different count: 1,314 / 1,208 / 1,071. A 2025 column is on the page (6,594 national, 949 at the office). The page does not say that year is complete, so it is left off the chart. | [APIX, création d'entreprise](https://investinsenegal.sn/services/creation-dentreprise/) |
+
+### What this is not
+
+A shared Wave or Orange Money account. A server that can approve a spend. Lightning, a hold invoice, or a node that receives the pot. An assistant, or a Wolof interface. Mainnet, or an audit. A defence against two officers who agree to sign. The longer table is [What this does not claim](#claims).
+
 <a id="how"></a>
 
 ## 4. How it works
@@ -161,6 +195,11 @@ Metrics a pilot would track, and that this repo has not measured: funds onboarde
 | Nostr | Gift-wraps the request and the approval. | [packages/nostr](packages/nostr) |
 | CLI | The demo. French by default, `--lang en`. | [apps/cli](apps/cli) |
 | Regtest | bitcoind. The thing that accepts or refuses. | [scripts/regtest.ts](scripts/regtest.ts) |
+
+<p align="center">
+  <img src="docs/diagrams/koinon-architecture.svg" width="100%" alt="The big picture. Treasurer, secretary, member and the assembly key, each on a phone. The request is a NIP-17 gift wrap with no PSBT, carried by a relay that accepts any publisher. A watch-only coordinator on 102-68-84-31.sslip.io has no private key. The price on screen is a 60,000 EUR fixture. bitcoind, Bitcoin Core 32.1, regtest, holds a P2WSH 2-of-3 plus CSV. Two signatures were accepted. One signature was NULLFAIL. Recovery before the delay was non-BIP68-final. N is 10 on regtest. The member's phone checks the raw transaction and does not run bitcoind's script flags." />
+  <br/><sub>The big picture. The same path, as a sequence, is below. Regtest. Sats have no value. About 4,320 blocks was not used.</sub>
+</p>
 
 ```mermaid
 flowchart TB
@@ -244,7 +283,7 @@ GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/run
 | `/fonds/:id` | 4,249 ms | 140,460 bytes | Those, plus the proof chunk. No signing code. The fund id was unknown, so the screen was "Fund not found". |
 | `/app` | 8,781 ms | 370,383 bytes | Those, plus the signing chunk. Its last byte was at 8,586 ms. |
 
-Vite's own gzip line for the signing chunk, `pinpad-BoxGhd4s.js`, was 730.43 kB raw, 227.98 kB gzip. The proof chunk, `phone-z1fi-Luk.js`, was 114.90 kB raw, 39.26 kB gzip. An earlier build the same day was 708 kB raw, 228 kB gzip, and that file loaded on `/fonds` as well. It no longer does. The font files are on disk (Latin 27.34 kB, Latin extended 21.72 kB, Vietnamese 8.35 kB). They were not in the transfer above at the moment the text appeared. The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
+Vite's own gzip line for the signing chunk, `pinpad-BoxGhd4s.js`, was 730.43 kB raw, 227.98 kB gzip. The proof chunk, `phone-z1fi-Luk.js`, was 114.90 kB raw, 39.26 kB gzip. An earlier build the same day was 708 kB raw, 228 kB gzip, and that file loaded on `/fonds` as well. It no longer does. The font files in that transfer were Plus Jakarta (Latin 27.34 kB, Latin extended 21.72 kB, Vietnamese 8.35 kB). They were not in the transfer above at the moment the text appeared. The `/` row is that homepage. The landing page was redesigned twice and mobile language controls were added after this run; `/` has not been measured again. Its chunk is now `Home-Dw-LUIpZ.js` (27.34 kB / 9.09 kB gzip, down from 52.86 / 16.51 for the previous version), plus one hero capture of `/app` in WebP (38.6–43.1 kB, one file per language and theme, only one loads). `/fonds/:id` and `/app` still share the same build structure; the signing chunk is now `pinpad-BUhpHEL4.js` (730.53 kB / 227.99 kB gzip). The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
 
 <!-- TODO: first commit hash, once the repo has one. -->
 
@@ -320,7 +359,7 @@ pnpm koinon audit verify
 
 `attack single-sig` exits 0 when bitcoind refuses. It exits 1 if bitcoind accepts. `recover` before N prints the refusal and exits 0. That refusal is the result.
 
-Roles are labels, not names: O1 treasurer, O2 secretary, O3 president, K assembly. Full HTTP detail is [docs/API.md](docs/API.md). The screen is `apps/web`, live at [koinon-ten.vercel.app](https://koinon-ten.vercel.app). The contract it follows is [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md).
+Roles are labels, not names: O1 treasurer, O2 secretary, O3 president, K assembly. Full HTTP detail is [docs/API.md](docs/API.md). The screen is `apps/web`, live at [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io). The contract it follows is [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md).
 
 <a id="getting-started"></a>
 
@@ -440,15 +479,13 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | Gift wrap hides the purpose | `pnpm nostr-test` and `pnpm e2e` |
 | Keys encrypted, absent from the file and the transcript | `pnpm cli-demo` |
 | 12 members and the full checklist | `pnpm e2e` |
-| Homepage on Vercel | [koinon-ten.vercel.app](https://koinon-ten.vercel.app), fetched 17 Nov 2026. Static `apps/web` build. |
+| Public demo on one origin | [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io/), `/app`, `/v1/health` ok, 18 Nov 2026. Compose on HostAfrica VPS, Nigeria. |
 
 </details>
 
 <details>
 <summary><strong>Built, not observed</strong></summary>
 
-- `/app` on Vercel talking to a public coordinator. Vercel has no `/v1`. A fetch of `https://koinon-ten.vercel.app/app` on 17 Nov 2026 was 404 until an SPA rewrite is deployed (`vercel.json`).
-- A public Docker host. `docs/DEPLOY.md` describes one.
 - A restarted coordinator reading the same database.
 - Two machines, or a public relay.
 - A pin typed at a prompt. The demo passes `--pin`.
