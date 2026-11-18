@@ -78,6 +78,7 @@ export function Row({
   onClick,
   chevron,
   danger,
+  testId,
 }: {
   icon?: ReactNode;
   title: ReactNode;
@@ -86,6 +87,7 @@ export function Row({
   onClick?: () => void;
   chevron?: boolean;
   danger?: boolean;
+  testId?: string;
 }) {
   const body = (
     <>
@@ -103,7 +105,7 @@ export function Row({
   const className = "flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 [&+&]:border-t [&+&]:border-line";
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={`${className} press transition-colors hover:bg-card-2 active:scale-[0.99]`}>
+      <button type="button" data-testid={testId} onClick={onClick} className={`${className} press transition-colors hover:bg-card-2 active:scale-[0.99]`}>
         {body}
       </button>
     );

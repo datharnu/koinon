@@ -1,12 +1,15 @@
-import type { ReactNode } from "react";
-import type { LedgerEntry } from "../lib/api";
+import { useState, type ReactNode } from "react";
+import type { LedgerEntry } from "../lib/http";
 import { sats, xof } from "../lib/format";
 import { memberTone } from "../lib/people";
 import { usePrefs } from "../lib/prefs";
+import { useFund, useLedger, useMembers, useRequest } from "../lib/queries";
 import { Avatar } from "../ui/avatar";
 import { IconCoins, IconLifebuoy, IconSend } from "../ui/icons";
 import { EmptyState, ErrorState, Skeleton } from "../ui/states";
-import { useLedger, useMembers, useRequest } from "./hooks";
+import { ProofSheet } from "../proof/ProofSheet";
+import { fingerprintStatus, useInspection } from "../proof/load";
+import { whoSigned } from "../proof/names";
 import { Group, IconBubble, Row } from "./ui";
 
 /** Newest first; unconfirmed on top, the way a bank shows pending lines. */
@@ -18,6 +21,7 @@ export function ActivityList({ fundId, limit, emptyAction }: { fundId: string; l
   const { t } = usePrefs();
   const ledger = useLedger(fundId);
   const members = useMembers(fundId);
+  const [selected, setSelected] = useState<LedgerEntry | null>(null);
   if (ledger.isPending) {
     return (
       <Group className="flex flex-col gap-3 p-4">
@@ -49,22 +53,27 @@ export function ActivityList({ fundId, limit, emptyAction }: { fundId: string; l
   const names = new Map((members.data?.members ?? []).map((member) => [member.index, member.pseudonym]));
   const shown = limit ? entries.slice(0, limit) : entries;
   return (
-    <Group>
-      {shown.map((entry) =>
-        entry.kind === "contribution" ? (
-          <ContributionRow key={`${entry.txid}:${entry.vout}`} entry={entry} name={entry.index !== null ? names.get(entry.index) : undefined} />
-        ) : (
-          <SpendRow
-            key={entry.txid}
-            entry={entry}
-            recovered={(entry.indexes ?? []).flatMap((index) => {
-              const name = names.get(index);
-              return name ? [{ index, name }] : [];
-            })}
-          />
-        ),
-      )}
-    </Group>
+    <>
+      <Group>
+        {shown.map((entry) =>
+          entry.kind === "contribution" ? (
+            <ContributionRow key={`${entry.txid}:${entry.vout}`} entry={entry} name={entry.index !== null ? names.get(entry.index) : undefined} onOpen={() => setSelected(entry)} />
+          ) : (
+            <SpendRow
+              key={entry.txid}
+              fundId={fundId}
+              entry={entry}
+              recovered={(entry.indexes ?? []).flatMap((index) => {
+                const name = names.get(index);
+                return name ? [{ index, name }] : [];
+              })}
+              onOpen={() => setSelected(entry)}
+            />
+          ),
+        )}
+      </Group>
+      <ProofSheet fundId={fundId} entry={selected} onClose={() => setSelected(null)} />
+    </>
   );
 }
 
@@ -81,31 +90,37 @@ function Confirmations({ count }: { count: number }) {
   return <>{count === 1 ? t("1 confirmation", "1 confirmation") : t(`${count} confirmations`, `${count} confirmations`)}</>;
 }
 
-function ContributionRow({ entry, name }: { entry: LedgerEntry; name?: string }) {
+function ContributionRow({ entry, name, onOpen }: { entry: LedgerEntry; name?: string; onOpen: () => void }) {
   const { t, lang } = usePrefs();
   const label = name ?? t(`Membre #${entry.index ?? "?"}`, `Member #${entry.index ?? "?"}`);
   return (
     <Row
+      testId={`activity-${entry.txid}`}
+      onClick={onOpen}
+      chevron
       icon={<Avatar name={label} tone={memberTone(entry.index ?? 0)} />}
       title={label}
       subtitle={<Confirmations count={entry.confirmations} />}
       right={
-        <span className="flex flex-col items-end">
+        <span className="flex max-w-[46%] flex-col items-end">
           <span className="tabular text-[15px] font-semibold text-good">+{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}</span>
-          <span className="tabular text-[12px] text-ink-3">{sats(entry.sats, lang)} sats</span>
+          <span className="truncate text-[12px] text-ink-3">{t("Preuve Bitcoin", "Bitcoin proof")}</span>
         </span>
       }
     />
   );
 }
 
-function SpendRow({ entry, recovered = [] }: { entry: LedgerEntry; recovered?: { index: number; name: string }[] }) {
+function SpendRow({ fundId, entry, recovered = [], onOpen }: { fundId: string; entry: LedgerEntry; recovered?: { index: number; name: string }[]; onOpen: () => void }) {
   const { t, lang } = usePrefs();
   if (!entry.request_id) {
     const who = recovered.map((item) => item.name).join(", ");
     const first = recovered[0];
     return (
       <Row
+        testId={`activity-${entry.txid}`}
+        onClick={onOpen}
+        chevron
         icon={
           first ? (
             <Avatar name={first.name} tone={memberTone(first.index)} />
@@ -118,24 +133,27 @@ function SpendRow({ entry, recovered = [] }: { entry: LedgerEntry; recovered?: {
         title={who ? t(`${who} · récupération`, `${who} · recovery`) : t("Récupération par l'assemblée", "Assembly recovery")}
         subtitle={<Confirmations count={entry.confirmations} />}
         right={
-          <span className="flex flex-col items-end">
+          <span className="flex max-w-[46%] flex-col items-end">
             <span className="tabular text-[15px] font-semibold">
               −{entry.xof_at_receipt ? xof(entry.xof_at_receipt, lang) : `${sats(entry.sats, lang)} sats`}
             </span>
-            {entry.xof_at_receipt ? <span className="tabular text-[12px] text-ink-3">{sats(entry.sats, lang)} sats</span> : null}
+            <SignerLine fundId={fundId} txid={entry.txid} />
           </span>
         }
       />
     );
   }
-  return <RequestedSpendRow entry={entry} requestId={entry.request_id} />;
+  return <RequestedSpendRow fundId={fundId} entry={entry} requestId={entry.request_id} onOpen={onOpen} />;
 }
 
-function RequestedSpendRow({ entry, requestId }: { entry: LedgerEntry; requestId: string }) {
+function RequestedSpendRow({ fundId, entry, requestId, onOpen }: { fundId: string; entry: LedgerEntry; requestId: string; onOpen: () => void }) {
   const { t, lang } = usePrefs();
   const request = useRequest(requestId);
   return (
     <Row
+      testId={`activity-${entry.txid}`}
+      onClick={onOpen}
+      chevron
       icon={
         <IconBubble>
           <IconSend size={18} />
@@ -144,11 +162,34 @@ function RequestedSpendRow({ entry, requestId }: { entry: LedgerEntry; requestId
       title={request.data?.purpose ?? t("Dépense", "Spend")}
       subtitle={<Confirmations count={entry.confirmations} />}
       right={
-        <span className="flex flex-col items-end">
+        <span className="flex max-w-[46%] flex-col items-end">
           <span className="tabular text-[15px] font-semibold">−{request.data ? xof(request.data.amount_xof, lang) : `${sats(entry.sats, lang)} sats`}</span>
-          <span className="tabular text-[12px] text-ink-3">{t("2 signatures", "2 signatures")}</span>
+          <SignerLine fundId={fundId} txid={entry.txid} />
         </span>
       }
     />
+  );
+}
+
+/** Who signed, read from the witness. The old row said "2 signatures" without looking. */
+function SignerLine({ fundId, txid }: { fundId: string; txid: string }) {
+  const { t, lang } = usePrefs();
+  const fund = useFund(fundId);
+  const proof = useInspection(fundId, txid);
+  let label = t("Preuve Bitcoin", "Bitcoin proof");
+  if (proof.isError) label = t("Preuve indisponible", "Proof unavailable");
+  else if (proof.data && fund.data) {
+    const seen = proof.data.inspection;
+    if (seen.ok && seen.direction === "spend" && seen.signers.length > 0) {
+      const path = seen.path === "B" ? t("récupération", "recovery") : t("2 sur 3", "2-of-3");
+      const finger = fingerprintStatus(fund.data, window.location.hash.replace(/^#/, ""));
+      const who = finger === "mismatch" || finger === "invalid" ? seen.signers.join(" + ") : whoSigned(fund.data, seen.signers, lang);
+      label = `${who} · ${path}`;
+    } else if (!seen.ok) label = t("Non prouvée", "Not proven");
+  }
+  return (
+    <span className="max-w-full truncate text-right text-[12px] text-ink-3" title={label}>
+      {label}
+    </span>
   );
 }

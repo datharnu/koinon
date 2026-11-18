@@ -45,10 +45,13 @@ Creating a fund, adding a member, and broadcasting are not authenticated. The fu
 | POST | `/v1/requests/:id/signatures` | officer | Body `{ "psbt" }`. Rejects a changed transaction. |
 | POST | `/v1/requests/:id/reject` | officer | Body `{ "reason" }`. One officer can veto. |
 | POST | `/v1/requests/:id/broadcast` | no | Broadcasts only an approved PSBT |
-| GET | `/v1/funds/:id/audit` | no | Hash chain |
-| GET | `/v1/funds/:id/audit/verify` | no | `{ ok, seq }` |
+| GET | `/v1/funds/:id/audit` | no | Hash chain rows. The member's phone recomputes them. |
+| GET | `/v1/funds/:id/audit/verify` | no | `{ ok, seq }`. The server's own check. The phone does not trust this. |
+| GET | `/v1/funds/:id/proof/:txid` | no | Raw hex of one transaction already in this fund's `utxos` or `spends`. 404 otherwise. Not an open proxy to bitcoind. |
 
 `GET /v1/rate?require_fresh=1` returns `RATE_STALE` when the cache is older than 60 seconds. The same flag works on spend creation.
+
+`GET /v1/funds/:id/proof/:txid` returns `{ txid, hex, kind, confirmations, network, regtest_sats_have_no_value }`. `kind` is `spend` if the txid is in `spends`, otherwise `contribution`. A mempool height is `confirmations: 0`. If the node does not answer the block count, `confirmations` is `null`. The phone uses the hex. It does not treat `confirmations` as something it counted.
 
 ## Signer check
 

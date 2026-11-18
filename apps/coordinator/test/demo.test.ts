@@ -4,7 +4,7 @@ import { accountFromMnemonic, accountPubkey, bitcoinNetwork, mnemonicFromEntropy
 import { buildApp } from "../src/app.js";
 import type { BitcoinClient } from "../src/bitcoin.js";
 import { openDatabase } from "../src/db.js";
-import type { DemoWallet } from "../src/demo.js";
+import { demoWallet, type DemoWallet } from "../src/demo.js";
 
 function xpub(byte: number, role: Role): string {
   return accountFromMnemonic(mnemonicFromEntropy(new Uint8Array(16).fill(byte)), role, "regtest").xpub;
@@ -32,6 +32,9 @@ function node(refuse?: string): BitcoinClient {
     },
     async getMempoolHex() {
       return [];
+    },
+    async getRawTransaction() {
+      throw new Error("missing transaction");
     },
   };
 }
@@ -106,5 +109,59 @@ describe("demo faucet", () => {
     expect(mined.json.height).toBe(10);
     const tooMany = await post(app, "/v1/demo/mine", { blocks: 500 });
     expect(tooMany.json.code).toBe("VALIDATION");
+  });
+});
+
+describe("faucet refill", () => {
+  it("mines a refill and retries sendtoaddress once when the wallet is empty", async () => {
+    const calls: string[] = [];
+    let sends = 0;
+    const original = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(String((init as RequestInit).body)) as { method: string };
+      calls.push(body.method);
+      const ok = (result: unknown) => Response.json({ result, error: null });
+      if (body.method === "createwallet") return Response.json({ result: null, error: { code: -4, message: "Wallet already exists" } });
+      if (body.method === "getbalance") return ok(10);
+      if (body.method === "getnewaddress") return ok("bcrt1qminer");
+      if (body.method === "generatetoaddress") return ok(["block"]);
+      if (body.method === "sendtoaddress") {
+        sends += 1;
+        if (sends === 1) return Response.json({ result: null, error: { code: -6, message: "Insufficient funds" } });
+        return ok("aa".repeat(32));
+      }
+      return ok(0);
+    };
+    try {
+      const wallet = demoWallet({ url: "http://node", user: "koinon", password: "koinon", wallet: "faucet" });
+      await expect(wallet.pay("bcrt1qmember", 1000n)).resolves.toBe("aa".repeat(32));
+      expect(calls.filter((method) => method === "sendtoaddress")).toHaveLength(2);
+      expect(calls.filter((method) => method === "generatetoaddress")).toHaveLength(2);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("does not mine when sendtoaddress fails for another reason", async () => {
+    let sends = 0;
+    const original = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(String((init as RequestInit).body)) as { method: string };
+      const ok = (result: unknown) => Response.json({ result, error: null });
+      if (body.method === "createwallet") return Response.json({ result: null, error: { code: -4, message: "Wallet already exists" } });
+      if (body.method === "getbalance") return ok(10);
+      if (body.method === "sendtoaddress") {
+        sends += 1;
+        return Response.json({ result: null, error: { code: -26, message: "txn-mempool-conflict" } });
+      }
+      return ok("bcrt1qminer");
+    };
+    try {
+      const wallet = demoWallet({ url: "http://node", user: "koinon", password: "koinon", wallet: "faucet" });
+      await expect(wallet.pay("bcrt1qmember", 1000n)).rejects.toThrow(/txn-mempool-conflict/);
+      expect(sends).toBe(1);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

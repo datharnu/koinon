@@ -13,5 +13,8 @@ data
 !.env.example
 .DS_Store
 coverage
+test-results
+playwright-report
+blob-report
 *.tsbuildinfo
 .pnpm-store

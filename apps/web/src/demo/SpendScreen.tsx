@@ -62,12 +62,14 @@ export function SpendScreen({ role }: { role: OfficerRole }) {
     setBusy(t("Ouverture…", "Opening…"));
     setFailure(null);
     try {
-      const created = await openSpend({ config: demo.config, role, secret: demo.secrets[role], amountXof: value, recipient: recipient.trim(), purpose: purpose.trim() });
+      const secret = demo.secrets[role];
+      if (!secret) throw new Error("NO_KEY");
+      const created = await openSpend({ config: demo.config, role, secret, amountXof: value, recipient: recipient.trim(), purpose: purpose.trim() });
       setBusy(t("Signature…", "Signing…"));
       const decision = await signSpend({
         config: demo.config,
         role,
-        secret: demo.secrets[role],
+        secret,
         requester: role,
         read: { request_id: created.id, amount_xof: value, amount_sats: created.amount_sats, recipient: recipient.trim(), purpose: purpose.trim(), expires_at: created.expires_at, path: "A" },
       });

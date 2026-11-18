@@ -35,8 +35,28 @@ On 17 Nov 2026, 1,000 XOF locked at 2,541 sats. The euro price in that run was a
 | bitcoind rejected 1 signature and accepted 2 | Local regtest, Bitcoin Core 32.1, not mainnet |
 | bitcoind rejected path B, then accepted it after 10 blocks | `N` is 10 on regtest. A real fund would set about 4,320 blocks. That setting was not used |
 | A swapped recipient was refused before any signature | The officer's function. The coordinator is not trusted for this check |
-| 12 members, a confirmed spend, an expired request, and a broken audit row | `pnpm e2e` on the host. Docker Compose was not started |
+| 12 members, a confirmed spend, an expired request, and a broken audit row | `pnpm e2e` on the host. Docker Compose was not started on this machine |
 | Gift-wrapped request and approval | Loopback relay. It does not authenticate publishers. No public relay |
+| A member phone can recompute the audit chain and a spend's signatures from the raw transaction | `@noble/hashes` and `@noble/curves` in the browser. It does not run bitcoind's script flags, and it does not count blocks |
+
+The phone is a Bitcoin wallet. It derives BIP39 keys on `m/48'/1'/0'/2'`, builds the P2WSH 2-of-3 plus CSV script, checks the PSBT, and signs. The coordinator never receives the mnemonic. There is no Lightning wallet here. A Lightning node that receives for the fund would hold the pot. This fund is meant to sit for months in a script nobody holds.
+
+| Devpost criterion | What to look at | Limit |
+| --- | --- | --- |
+| Usefulness and local impact | A dahira, a GIE, or a club whose treasurer can empty the Wave account today. The member link shows the pot in francs. | Zero associations are using it. The rows below are targets, not traction. |
+| Security by design | bitcoind refuses one signature. The officer's phone refuses a swapped recipient. The member's phone checks the witness. | Regtest. No audit. Two officers who agree can spend. |
+| UX and UI on a slow phone | `/` and `/fonds/:id` do not load the signing code. The measured times are in [Evidence](#evidence). | One headless Chromium on this Mac, not a handset and not the VPS. |
+| Working MVP | `pnpm e2e`, or Docker Compose from [docs/DEPLOY.md](docs/DEPLOY.md). The browser demo is `/app`. | Vercel does not run `/v1` or `/relay`. |
+| Clear pitch and docs | This page, [docs/POLICY.md](docs/POLICY.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md). | Team names are not in the repo. The license is MIT. |
+
+The rubric is on [the Devpost page](https://dakar-bitcoin-hack-2026.devpost.com/). This table is a map to that page. It is not a score. The paste-ready write-up and the demo shot list are in [docs/SUBMISSION.md](docs/SUBMISSION.md).
+
+| Pilot metric | Now | Target, not a result |
+| --- | --- | --- |
+| Associations onboarded | 0 | First conversations with dahiras, GIEs, and clubs that already collect a monthly pot |
+| Median time from request to the second signature | not measured | Same day |
+| Tampered or one-signature attempts blocked | the regtest refusals in the table above | Every one the phone or bitcoind actually sees |
+| Member links opened with a matching fingerprint | not measured outside this demo | The link that ends with `#`, checked on the phone |
 
 **Everything here runs on regtest. Those sats have no value.** A live price from mempool.space was requested once and timed out. The server returned `RATE_UNAVAILABLE` and did not invent a price.
 
@@ -143,16 +163,18 @@ Metrics a pilot would track, and that this repo has not measured: funds onboarde
 | Regtest | bitcoind. The thing that accepts or refuses. | [scripts/regtest.ts](scripts/regtest.ts) |
 
 ```mermaid
-flowchart LR
-  officer["Officer device"] --> cli["CLI"]
-  cli --> coordinator["Coordinator, watch-only"]
-  cli --> relay["Nostr relay"]
-  coordinator --> bitcoind["bitcoind regtest"]
-  cli --> bitcoind
-  member["Member"] --> coordinator
+flowchart TB
+  keys["Officer phone: BIP39, BIP48, WebAuthn or an 8-digit code"]
+  keys --> wrap["NIP-17 gift wrap"]
+  wrap --> relay["Nostr relay"]
+  keys --> sign["PSBT check and signature, on the phone"]
+  sign --> coord["Watch-only coordinator"]
+  coord --> node["bitcoind: 2-of-3 and a delayed assembly path"]
+  member["Member phone"] --> coord
+  member --> local["Audit chain, script, and BIP143, on the phone"]
 ```
 
-The member reads the ledger. The member does not sign. The relay carries the request, not the signature's authority. bitcoind accepts the transaction or it does not.
+The member does not sign. The relay carries the request, not the authority to spend. The coordinator can hand the phone a raw transaction. It cannot make a bad signature verify. bitcoind accepts the transaction or it does not. The CLI follows the same path without the screen.
 
 ```mermaid
 sequenceDiagram
@@ -206,12 +228,23 @@ Recorded 17 Nov 2026 on this machine. Bitcoin Core 32.1. Long output is in [docs
 | `pnpm coordinator-spend` | Live price timed out, `RATE_UNAVAILABLE`. A labeled test double then spent. tx `057ec038f9356186151ab9fc7498e1541c9ec00c7e76a879d90ed3f8eb980bda`. |
 | `pnpm nostr-test` | Gift wrap delivered. Ciphertext had no purpose. Tamper produced no approval. |
 | `pnpm cli-demo` | The officer path, a veto, and recovery. Recovery tx `6c1ccaa39387ef08ccdfcdd1547fd4c877594e430b23db9d21d3d4d298ab68f7`. |
-| `pnpm e2e` | 12 members, the checklist above. Spend tx `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865`. Recovery tx `7f50d10e467ee5ccb5342c6de9cbb863c9a817d410cb7a39ee448ef150037cc1`. |
-| `pnpm test` | core 22, coordinator 2, nostr 2. They do not start bitcoind. |
+| `pnpm e2e` | Re-run the same day, host bitcoind, Docker not installed. 10 checks passed. 1,000 XOF locked at 2,541 sats. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. An earlier run the same day: spend `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865`, recovery `7f50d10e467ee5ccb5342c6de9cbb863c9a817d410cb7a39ee448ef150037cc1`. |
+| `pnpm test` | After the member-proof cases: core 30, coordinator 10, nostr 2. They do not start bitcoind. Earlier the same day: core 22, coordinator 2, nostr 2. At the script proof: 7. |
+| `pnpm ui-walk` | Playwright, one worker, against `http://localhost:5173` and the host coordinator. 390×844 passed in 39.2s. 360×740 passed in 39.8s. 2 passed. The fund was created with an 8-digit code. |
 
 `pnpm test` earlier the same day, at the script proof, was 7. That count is kept in [docs/POLICY.md](docs/POLICY.md). The later count does not erase it.
 
-GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764). Unit tests and the compose e2e passed. The live site is the web build, not that run.
+GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764). Unit tests and the compose e2e passed. The live site is the web build, not that run. That run does not include the member-proof tests added after it.
+
+`pnpm build:web` on this machine, Vite 8.3.8, then one cold load in headless Chromium. Cache off. Latency 400 ms. Download and upload 400 × 1024 / 8 bytes per second. CPU throttle 4. Viewport 390×844. The server was `vite preview` on `127.0.0.1:4173`. This is not a phone and not a VPS. Time is until the route's own text was on screen. Transfer is `transferSize`, which includes headers.
+
+| Route | Visible | Transfer | What loaded |
+| --- | --- | --- | --- |
+| `/` | 3,839 ms | 109,054 bytes | Entry, home, avatar, CSS. No signing code. |
+| `/fonds/:id` | 4,249 ms | 140,460 bytes | Those, plus the proof chunk. No signing code. The fund id was unknown, so the screen was "Fund not found". |
+| `/app` | 8,781 ms | 370,383 bytes | Those, plus the signing chunk. Its last byte was at 8,586 ms. |
+
+Vite's own gzip line for the signing chunk, `pinpad-BoxGhd4s.js`, was 730.43 kB raw, 227.98 kB gzip. The proof chunk, `phone-z1fi-Luk.js`, was 114.90 kB raw, 39.26 kB gzip. An earlier build the same day was 708 kB raw, 228 kB gzip, and that file loaded on `/fonds` as well. It no longer does. The font files are on disk (Latin 27.34 kB, Latin extended 21.72 kB, Vietnamese 8.35 kB). They were not in the transfer above at the moment the text appeared. The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
 
 <!-- TODO: first commit hash, once the repo has one. -->
 
@@ -259,7 +292,7 @@ The signer re-derives the fund scripts from the xpubs stored on the device. A ch
 | Coordinator | Fastify 5 | Watch-only HTTP. Writes are rate-limited in memory, per process. |
 | Messages | `nostr-tools` 2.26.1, NIP-17 | The request is not a PSBT on the relay. |
 | Chain | Bitcoin Core 32.1, regtest | The refusal has to come from the node. |
-| Web | Vite 8, React 19, Tailwind 4 | Homepage and `/app`. Static build on Vercel. Signing still happens in the browser against a coordinator, not on Vercel. |
+| Web | Vite 8, React 19, Tailwind 4 | The wallet UI. Keys, the P2WSH script, the PSBT check, and the signature stay in the browser. The member view checks the raw transaction with `@noble/curves`. |
 | Package manager | pnpm 11.1.2 | Workspaces. There is no npm script runner beyond what pnpm exposes. |
 
 <a id="cli"></a>
@@ -442,9 +475,8 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 - `node:sqlite` is experimental.
 - Creating a fund and adding a member are unauthenticated. The fund id is unguessable. The money still needs two signatures.
 - The demo relay accepts any publisher.
-- No license file. <!-- TODO: choose a license. -->
-- No team names in this repo. <!-- TODO: add them. -->
-- The Dakar Bitcoin Hack rubric is not in this repo, so this file does not score itself against criteria it has not read. <!-- TODO: link the rules page. -->
+- The license is MIT, in [LICENSE](LICENSE). Copyright 2026 Koinon contributors. Names are not in this repo until they are supplied.
+- The Devpost criteria are mapped in the summary. The page is [dakar-bitcoin-hack-2026.devpost.com](https://dakar-bitcoin-hack-2026.devpost.com/).
 
 </details>
 
@@ -452,11 +484,13 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 
 ## 13. Next
 
-1. Put the compose stack on a VPS so [koinon-ten.vercel.app/app](https://koinon-ten.vercel.app/app) has a coordinator, or serve the same origin from Caddy as [docs/DEPLOY.md](docs/DEPLOY.md).
-2. Redeploy Vercel with `vercel.json` so `/app` is not 404.
-3. A real price response from mempool.space, shown next to the fixture so the two are not confused.
-4. `N` at about 4,320 blocks on a network where that wait means something. Not before the 10-block proof is boring.
-5. A third-party reading of the script. Then, and only then, a conversation about mainnet.
+1. Put the compose stack on one domain, as [docs/DEPLOY.md](docs/DEPLOY.md). Vercel cannot proxy `/v1` or the relay socket, and a passkey belongs to one domain.
+2. A real price response from mempool.space, shown next to the fixture so the two are not confused.
+3. `N` at about 4,320 blocks on a network where that wait means something. Not before the 10-block proof is boring.
+4. A third-party reading of the script. Then, and only then, a conversation about mainnet.
+5. Lightning stays out. A node that receives into a channel holds the coins on that node. The rule in this repo is a script that can hold an association's pot for months, where neither the treasurer nor the server can move it alone.
+6. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
+7. A Mobile Money bridge, including the kind of cash-in Banxaas does, stays out until the script is the thing a pilot trusts. The bridge would sit in front of the fund. It would not replace the two signatures.
 
 <div align="center">
 

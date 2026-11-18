@@ -21,6 +21,7 @@ x-app: &app
 services:
   bitcoind:
     image: bitcoin/bitcoin:32.1
+    restart: unless-stopped
     command:
       - -regtest=1
       - -server=1
@@ -44,6 +45,7 @@ services:
 
   prices:
     <<: *app
+    restart: unless-stopped
     environment:
       HOST: 0.0.0.0
       PORT: 8090
@@ -63,6 +65,7 @@ services:
 
   relay:
     <<: *app
+    restart: unless-stopped
     environment:
       HOST: 0.0.0.0
       PORT: 8080
@@ -72,6 +75,7 @@ services:
 
   coordinator:
     <<: *app
+    restart: unless-stopped
     environment:
       HOST: 0.0.0.0
       PORT: 8787
@@ -112,6 +116,7 @@ services:
       context: ..
       dockerfile: infra/web.Dockerfile
     image: koinon-web:local
+    restart: unless-stopped
     environment:
       KOINON_SITE: ${KOINON_SITE:-:80}
     ports:

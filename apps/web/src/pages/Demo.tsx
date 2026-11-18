@@ -1,3 +1,4 @@
+import "../polyfills";
 import type { Role } from "@koinon/core";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";

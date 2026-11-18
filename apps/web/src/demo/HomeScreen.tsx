@@ -1,15 +1,15 @@
-import type { FundView } from "../lib/api";
-import { xof, sats } from "../lib/format";
+import { xof } from "../lib/format";
 import type { OfficerRole } from "../lib/flows";
+import { memberLink } from "../lib/link";
 import { PEOPLE, roleTitle } from "../lib/people";
 import { usePrefs } from "../lib/prefs";
 import { Avatar, Chip } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { IconChevronRight, IconCopy, IconLink, IconSend, IconUserPlus } from "../ui/icons";
 import { Sheet } from "../ui/sheet";
-import { ErrorState, Skeleton } from "../ui/states";
 import { useToast } from "../ui/toast";
 import { ActivityList } from "./Activity";
+import { BalanceBlock } from "./Balance";
 import { useDemo } from "./context";
 import { useFund, useOfficerRequests } from "./hooks";
 import { SectionTitle, useNav } from "./ui";
@@ -98,50 +98,12 @@ function NextAmount({ amount }: { amount: string }) {
   return <span className="tabular">{xof(amount, lang)}</span>;
 }
 
-/** Balance in francs first; sats underneath because that is what the chain holds. */
-export function BalanceBlock({ fund, pending, error, retry }: { fund?: FundView; pending: boolean; error: unknown; retry: () => void }) {
-  const { t, lang } = usePrefs();
-  if (pending) {
-    return (
-      <div className="mt-2 flex flex-col gap-2">
-        <Skeleton className="h-11 w-52 rounded-xl bg-surface/60" />
-        <Skeleton className="h-4 w-32 rounded-md bg-surface/60" />
-      </div>
-    );
-  }
-  if (error || !fund) {
-    return (
-      <div className="mt-3">
-        <ErrorState error={error} onRetry={retry} />
-      </div>
-    );
-  }
-  return (
-    <div className="mt-1">
-      <p className="tabular break-words text-[44px] font-bold leading-[1.05] tracking-[-0.035em]">
-        {fund.balance_xof ? xof(fund.balance_xof, lang) : `${sats(fund.balance_sats, lang)} sats`}
-      </p>
-      <p className="tabular mt-1.5 flex flex-wrap items-center gap-x-2 text-[13.5px] text-ink-2">
-        <span>{sats(fund.balance_sats, lang)} sats</span>
-        {fund.rate.stale ? (
-          <Chip tone="warn" className="h-5 text-[11px]">
-            {t("taux ancien", "stale rate")}
-          </Chip>
-        ) : null}
-      </p>
-    </div>
-  );
-}
-
-export function memberLink(fundId: string): string {
-  return `${window.location.origin}/fonds/${fundId}`;
-}
-
 export function InviteSheet({ onClose }: { onClose: () => void }) {
   const { t } = usePrefs();
   const demo = useDemo();
   const toast = useToast();
-  const link = memberLink(demo.config.fundId);
+  const link = memberLink(demo.config);
+  const fingerprint = link.slice(link.indexOf("#") + 1);
   const copy = () => {
     void navigator.clipboard?.writeText(link).then(
       () => toast({ tone: "good", title: t("Lien copié", "Link copied"), body: t("Collez-le dans le groupe WhatsApp.", "Paste it in the WhatsApp group.") }),
@@ -168,9 +130,12 @@ export function InviteSheet({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-4 pb-1">
         <p className="text-[14px] leading-snug text-ink-2">
           {t(
-            "Chaque membre voit le solde et chaque mouvement, sans compte et sans clé. Personne ne peut dépenser depuis ce lien.",
-            "Every member sees the balance and every movement, with no account and no key. Nobody can spend from this link.",
+            "Chaque membre voit le solde et chaque mouvement, sans compte et sans clé. Le lien se termine par l'empreinte des quatre clés publiques. Le téléphone du membre la revérifie.",
+            "Every member sees the balance and every movement, with no account and no key. The link ends with a fingerprint of the four public keys. The member's phone checks it again.",
           )}
+        </p>
+        <p className="break-all font-mono text-[11px] leading-relaxed text-ink-3" title={fingerprint}>
+          #{fingerprint}
         </p>
         <div className="flex items-center gap-3 rounded-2xl bg-card p-3.5">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-brand">

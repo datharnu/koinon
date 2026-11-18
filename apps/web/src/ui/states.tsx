@@ -1,6 +1,6 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { errorCode } from "../lib/flows";
+import { errorCode } from "../lib/errors";
 import { useT } from "../lib/prefs";
 import { Button } from "./button";
 import { IconAlert } from "./icons";
@@ -20,7 +20,7 @@ export function EmptyState({ icon, title, body, action }: { icon: ReactNode; tit
 export function ErrorState({ error, onRetry, title }: { error: unknown; onRetry?: () => void; title?: string }) {
   const t = useT();
   const code = errorCode(error);
-  const offline = code === "UNKNOWN";
+  const offline = Boolean(error && typeof error === "object" && "status" in error && (error as { status: unknown }).status === 0);
   return (
     <div role="alert" className="flex flex-col items-center gap-2 rounded-[24px] bg-card px-6 py-7 text-center">
       <span className="mb-1 grid size-12 place-items-center rounded-full bg-bad-soft text-bad">

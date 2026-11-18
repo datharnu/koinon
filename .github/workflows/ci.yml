@@ -25,6 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - run: mkdir -p .e2e
       - run: docker compose -f infra/docker-compose.yml up -d --build
       - run: docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
@@ -34,5 +43,11 @@ jobs:
           curl -fsS http://127.0.0.1:8000/app | grep -q '<div id="root">'
           curl -fsS http://127.0.0.1:8000/v1/health | grep -q '"demo":true'
           curl -sS -o /dev/null -w '%{http_code}' --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' --max-time 3 http://127.0.0.1:8000/relay | grep -q 101
-      - run: docker compose -f infra/docker-compose.yml logs --no-color > .e2e/compose.log
-      - run: sh scripts/log-scan.sh .e2e/compose.log .e2e/word
+      - name: mobile walkthrough at 390px and 360px
+        run: pnpm exec playwright test -c e2e/playwright.config.ts
+      - name: compose logs
+        if: always()
+        run: docker compose -f infra/docker-compose.yml logs --no-color > .e2e/compose.log
+      - name: log scan
+        if: always()
+        run: sh scripts/log-scan.sh .e2e/compose.log .e2e/word

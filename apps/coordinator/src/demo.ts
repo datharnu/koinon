@@ -44,6 +44,15 @@ export function demoWallet(args: { url: string; user: string; password: string; 
     }
   }
 
+  async function refill(force: boolean): Promise<void> {
+    if (!force) {
+      const balance = Number(await call(walletUrl, "getbalance", []));
+      if (Number.isFinite(balance) && balance >= 5) return;
+    }
+    const fresh = String(await call(walletUrl, "getnewaddress", []));
+    await call(walletUrl, "generatetoaddress", [101, fresh]);
+  }
+
   function ensure(): Promise<void> {
     ready ??= prepare().catch((error) => {
       ready = null;
@@ -55,7 +64,18 @@ export function demoWallet(args: { url: string; user: string; password: string; 
   return {
     async pay(address, sats) {
       await ensure();
-      const txid = String(await call(walletUrl, "sendtoaddress", [address, btcText(sats)]));
+      // 2026-11-17: prepare() mined 101 blocks only the first time the wallet
+      // opened. After enough judge demos, sendtoaddress failed with insufficient
+      // funds and the public faucet stayed empty. Refill once, then retry once.
+      await refill(false);
+      let txid: string;
+      try {
+        txid = String(await call(walletUrl, "sendtoaddress", [address, btcText(sats)]));
+      } catch (error) {
+        if (!insufficientFunds(error)) throw error;
+        await refill(true);
+        txid = String(await call(walletUrl, "sendtoaddress", [address, btcText(sats)]));
+      }
       const miner = String(await call(walletUrl, "getnewaddress", []));
       await call(walletUrl, "generatetoaddress", [1, miner]);
       return txid;
@@ -67,6 +87,11 @@ export function demoWallet(args: { url: string; user: string; password: string; 
       return Number(await call(args.url, "getblockcount", []));
     },
   };
+}
+
+function insufficientFunds(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /insufficient funds/i.test(message);
 }
 
 function btcText(sats: bigint): string {

@@ -8,8 +8,9 @@ On the first regtest run, a 2-of-3 spend was rejected with `Signature must be ze
 
 ## Out of scope
 
-- Any user interface.
-- Lightning, mainnet, Banxaas, Mobile Money, AI features, Wolof, member phone numbers, push notifications.
+- Lightning, including hold invoices and NWC. A Lightning node that receives for the fund holds the pot. The rule here is a 2-of-3 script that keeps the coins for months, and nobody holds them.
+- An assistant in the app. It would not be the thing that refuses a spend.
+- mainnet, Banxaas, Mobile Money, Wolof, member phone numbers, push notifications.
 - Collusion protection beyond 2-of-3. Two officers who agree can spend.
 
 ## Coordinator, ran 17 Nov 2026
@@ -101,7 +102,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 - Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Create sends `prf: {}` so Safari 18 / iCloud and Android GPM enable hmac-secret; the 32 bytes come from a following `get()` with `eval` (Chrome may already return them at create). `getClientCapabilities()["extension:prf"] === false` hides the passkey button. Windows Hello has no hmac-secret: create reports `prf.enabled === false` and the UI falls back to an 8-digit code without a second prompt. The three client shapes are covered by `apps/web/src/lib/passkey.test.ts` (7 passed). Chrome 157 on this Mac reports `extension:prf: true`. A live Safari Touch ID, Android GPM, or Windows Hello ceremony was not completed here — those need the device.
 - The "Try to cheat" sheet opens its own 10 000 F request when the Treasurer has none pending, so a pending request stays on the Secretary's phone after the attack.
 - After a recovery is accepted, the indexer reads bitcoind's mempool so the spend can show as 0 confirmations (francs taken from the due's receipt, not a new rate). The demo still mines one block so the cheat-sheet story ends confirmed. Contributions still appear only after a mined block.
-- The in-browser bundle that signs (bitcoinjs, miniscript, secp256k1) is 708 kB, 228 kB gzipped, and loads only on `/app` and `/fonds`.
+- Earlier the same day, the signing bundle was 708 kB, 228 kB gzipped, and it loaded on `/app` and `/fonds`. The next build printed `pinpad-BfLbtgBt.js` at 730.43 kB, gzip 227.98 kB. The build after the toast and proof-error copy, still Vite 8.3.8, printed `pinpad-BoxGhd4s.js` at the same 730.43 kB, gzip 227.98 kB. That file is the signing code. The import graph loads it from `/app` and `/cosign`. `/` and `/fonds/:id` do not import it. The measured route sums are in the README. A later build can change the hash in the filename.
 - `@koinon/core` hashes with `@noble/hashes` instead of `node:crypto` so the same code signs in the browser.
 
 ## Not started

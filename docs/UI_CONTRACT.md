@@ -1,8 +1,8 @@
 # UI contract
 
-No UI is in this repository. Do not add one beside this file. The CLI in [apps/cli](../apps/cli) is the driver until a client exists. This page is what that client is allowed to assume. HTTP shapes and status codes are in [API.md](API.md).
+The client is `apps/web`. The CLI in [apps/cli](../apps/cli) is the same rule without a screen. HTTP shapes and status codes are in [API.md](API.md).
 
-The client paints a state. It does not decide a spend. A button is disabled because the last response said so, not because the button contains the rule.
+The client paints a state. It does not decide a spend. A button is disabled because the last response said so, not because the button contains the rule. The member's phone checks the Bitcoin transaction itself. A green row that only repeats the database is not a proof.
 
 ## States
 
@@ -39,7 +39,7 @@ Empty is a real response with nothing in it: no members, no ledger rows, no pend
 
 Long text is truncated on the row and kept in full behind it. Limits the API already enforces: fund name 80, pseudonym 40, purpose 140, reject reason 140. A bech32 address is shown in full on a detail view and may be cut in the middle on a row. A list of members pages with the ledger's `limit` and `offset`. The default ledger page is 50.
 
-A phone-sized layout is required when a UI is built, because the second signature happens on the officer's own device. No layout is specified here, and none is implemented.
+The screens that exist are `/`, `/app`, `/fonds/:id`, and `/cosign`. `/app` at 1180px and wider shows two phones. Below that, one phone with a switch. Playwright ran `e2e/walkthrough.spec.ts` locally on 17 Nov 2026 against the Vite dev server and the host coordinator: 390×844 passed in 39.2s, 360×740 passed in 39.8s. GitHub Actions has not run that spec yet. The workflow file includes it. Long names truncate on a row and stay whole in the proof sheet.
 
 ## Ledger
 
@@ -95,13 +95,31 @@ Empty: no mature or immature coin. Say that, not "failed." Loading: the node cal
 
 ## Audit
 
-Who: any member.
+Who: any member, on their own phone.
 
-Data: `GET /v1/funds/:id/audit/verify` returns `{ ok, seq }`. `ok: true` is "Audit intact." `ok: false` names `seq` and is `REFUSE`, not a soft warning.
+Data: `GET /v1/funds/:id/audit` returns the rows. The phone recomputes each SHA-256. It does not call `/audit/verify` for the badge. The screen says `Verified on this phone: n/n`, or the sequence where the chain broke. `n/n` is a chain check, not a statement that the host is honest. A chain rewritten from the first row still matches.
 
-Actions: verify. The client does not offer a repair button. A broken chain stays broken on screen.
+The member link ends with `#` and the SHA-256 of the four xpubs and `csv_blocks`. Labels are not in that hash. The phone shows one of four states: the keys match the fragment, the fragment is missing, the fragment is not 64 hex characters, or the keys differ. A mismatch does not show the server's names as verified. It shows the roles `O1`, `O2`, `O3`, and `K`.
 
-Empty does not apply once a fund exists. Fund creation writes the first row. Loading: the GET. Error: `NOT_FOUND`.
+Addresses: the phone re-derives each listed member's P2WSH address and the change address at index 0 from the four xpubs. It does not derive every possible index.
+
+Actions: none. There is no repair button. A broken chain stays broken on screen.
+
+Empty does not apply once a fund exists. Fund creation writes the first row. Loading: the GET and the local check. Error: `NOT_FOUND`, or the rows never arrived. That is "not checked", not "intact".
+
+## Witness
+
+Who: any member, by tapping a ledger row.
+
+Data: `GET /v1/funds/:id/proof/:txid` for the transaction, and again for each parent the fund recorded. The phone checks the witness script against the 2-of-3 plus CSV script it derived, then BIP143 sighashes and ECDSA with `@noble/curves`. It names the two keys that signed. A payment in has no officer signature. The screen says so.
+
+Checked on the phone: the link fingerprint, the audit chain, address derivation, the witness script, and the signatures. Not checked on the phone: bitcoind's script flags, the miniscript compiler, and the block count. Confirmations are the coordinator's number, including `0` for the mempool and "not reported" when the node did not answer. Regtest.
+
+The verdict for a spend that passed is: checked on this phone from Bitcoin bytes, not from the server's database. Any other result shows the reason. Loading is a skeleton. A missing transaction is an error with retry. An empty output list says there is no readable output. Long txids wrap. The sheet is a bottom sheet under 640px.
+
+## Second phone
+
+`/app` stays two phones on one screen. Settings has an optional "Sign on a second phone". A passkey secret does not leave the device, so that path explains itself and offers no QR. An 8-digit code puts officer 2's ciphertext in the URL fragment of `/cosign`. The code is typed on the other phone. The QR is not a real-fund feature. The second phone must open the same origin.
 
 ## What the client must not do
 

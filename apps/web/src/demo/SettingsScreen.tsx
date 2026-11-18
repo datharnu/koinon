@@ -1,3 +1,4 @@
+import { verifyAuditChain } from "@koinon/core/proof";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { endpoints } from "../lib/api";
@@ -16,6 +17,7 @@ import { useToast } from "../ui/toast";
 import { LangToggle, Segmented } from "../ui/toggles";
 import { ActivityList } from "./Activity";
 import { useDemo } from "./context";
+import { SecondPhoneSheet } from "./SecondPhone";
 import { useFund, useMembers } from "./hooks";
 import { InviteSheet } from "./HomeScreen";
 import { Group, IconBubble, LargeTitle, Row, ScreenHeader, SectionTitle, useNav } from "./ui";
@@ -27,8 +29,13 @@ export function SettingsScreen({ role }: { role: OfficerRole }) {
   const toast = useToast();
   const fund = useFund(demo.config.fundId);
   const members = useMembers(demo.config.fundId);
-  const audit = useQuery({ queryKey: ["audit", demo.config.fundId], queryFn: () => endpoints.auditVerify(demo.config.fundId), enabled: false });
+  const audit = useQuery({
+    queryKey: ["audit-local", demo.config.fundId],
+    queryFn: async () => verifyAuditChain((await endpoints.audit(demo.config.fundId)).entries),
+    enabled: false,
+  });
   const [forgetting, setForgetting] = useState(false);
+  const [secondPhone, setSecondPhone] = useState(false);
   const me = PEOPLE[role];
   const unlock = readUnlock();
 
@@ -65,8 +72,15 @@ export function SettingsScreen({ role }: { role: OfficerRole }) {
             <Row
               icon={<IconBubble><IconLink size={18} /></IconBubble>}
               title={t("Lien membres", "Member link")}
-              subtitle={t("Lecture seule, à partager", "Read only, to share")}
+              subtitle={t("Lecture seule, avec empreinte", "Read only, with a fingerprint")}
               onClick={() => nav.sheet(<InviteSheet onClose={() => nav.sheet(null)} />)}
+              chevron
+            />
+            <Row
+              icon={<IconBubble><IconUsers size={18} /></IconBubble>}
+              title={t("Signer sur un second téléphone", "Sign on a second phone")}
+              subtitle={t("Optionnel. La démo côte à côte reste le chemin principal.", "Optional. The side-by-side demo stays the main path.")}
+              onClick={() => setSecondPhone(true)}
               chevron
             />
             <Row
@@ -79,7 +93,13 @@ export function SettingsScreen({ role }: { role: OfficerRole }) {
             <Row
               icon={<IconBubble><IconChain size={18} /></IconBubble>}
               title={t("Journal d'audit", "Audit log")}
-              subtitle={t("Chaque action chaînée par hachage", "Every action hash-chained")}
+              subtitle={
+                audit.data
+                  ? audit.data.ok
+                    ? t(`Vérifié ici : ${audit.data.checked}/${audit.data.total}`, `Verified on this phone: ${audit.data.checked}/${audit.data.total}`)
+                    : t(`Cassé au n°${audit.data.seq ?? "?"} · ${audit.data.checked}/${audit.data.total}`, `Broken at #${audit.data.seq ?? "?"} · ${audit.data.checked}/${audit.data.total}`)
+                  : t("Chaque action chaînée par hachage", "Every action hash-chained")
+              }
               onClick={() => void audit.refetch()}
               right={
                 audit.isFetching ? (
@@ -144,6 +164,7 @@ export function SettingsScreen({ role }: { role: OfficerRole }) {
         </p>
       </div>
 
+      <SecondPhoneSheet open={secondPhone} onClose={() => setSecondPhone(false)} />
       <Sheet
         open={forgetting}
         contained

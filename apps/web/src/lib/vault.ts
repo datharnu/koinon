@@ -51,6 +51,19 @@ export async function storeSecret(role: Role, secret: Secret, pin: string): Prom
   localStorage.setItem(KEY_PREFIX + role, JSON.stringify(sealed));
 }
 
+/** The ciphertext only. A second phone can carry this; it still needs the code. */
+export function readSealed(role: Role): EncryptedKey | null {
+  const raw = localStorage.getItem(KEY_PREFIX + role);
+  if (!raw) return null;
+  try {
+    const file = JSON.parse(raw) as EncryptedKey;
+    if (file.v !== 1 || file.kdf !== "PBKDF2-SHA256" || file.iterations < 310_000) return null;
+    return file;
+  } catch {
+    return null;
+  }
+}
+
 export async function openSecret(role: Role, pin: string): Promise<Secret> {
   const raw = localStorage.getItem(KEY_PREFIX + role);
   if (!raw) throw new Error("NO_KEY");

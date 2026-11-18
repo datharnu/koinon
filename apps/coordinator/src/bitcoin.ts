@@ -5,6 +5,8 @@ export interface BitcoinClient {
   sendRawTransaction(hex: string): Promise<string>;
   /** Raw transactions in the mempool, hex. Used so a broadcast spend can show as 0 confirmations. */
   getMempoolHex(): Promise<string[]>;
+  /** Raw transaction hex, including mempool. Throws if bitcoind does not have it. */
+  getRawTransaction(txid: string): Promise<string>;
 }
 
 export function bitcoinRpc(args: { url: string; user: string; password: string }): BitcoinClient {
@@ -47,6 +49,9 @@ export function bitcoinRpc(args: { url: string; user: string; password: string }
         hexes.push((await call("getrawtransaction", [id, 0])) as string);
       }
       return hexes;
+    },
+    async getRawTransaction(txid) {
+      return (await call("getrawtransaction", [txid, false])) as string;
     },
   };
 }

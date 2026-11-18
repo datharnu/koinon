@@ -340,13 +340,7 @@ function swapRecipient(base64: string): string {
   return fresh.toBase64();
 }
 
-export function errorCode(error: unknown): string {
-  if (error instanceof KoinonApiError) return error.code;
-  if (error instanceof KoinonError) return error.code;
-  if (error instanceof Error && error.message === "NO_KEY") return "NO_KEY";
-  if (error instanceof Error && /wrong pin/i.test(error.message)) return "WRONG_PIN";
-  return "UNKNOWN";
-}
+export { errorCode } from "./errors";
 
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

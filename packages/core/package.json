@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./proof": "./src/proof.ts"
   },
   "scripts": {
     "test": "vitest run"
@@ -12,7 +13,10 @@
   "dependencies": {
     "@bitcoinerlab/miniscript": "2.0.1",
     "@bitcoinerlab/secp256k1": "2.0.0",
+    "@noble/curves": "2.0.1",
     "@noble/hashes": "1.8.0",
+    "@scure/base": "1.2.6",
+    "@scure/bip32": "2.0.1",
     "bip32": "5.0.1",
     "bip39": "3.1.2",
     "bitcoinjs-lib": "7.0.5",

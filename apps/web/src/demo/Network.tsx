@@ -10,7 +10,7 @@ import { Button, Spinner } from "../ui/button";
 import { IconCheck, IconCoins, IconCube, IconLifebuoy, IconShield, IconSparkles, IconUsers } from "../ui/icons";
 import { Sheet } from "../ui/sheet";
 import { useToast } from "../ui/toast";
-import { useDemo } from "./context";
+import { secretFor, useDemo } from "./context";
 import { useFund } from "./hooks";
 import { Note, ScreenHeader, useNav } from "./ui";
 
@@ -191,11 +191,11 @@ function CheatList() {
     }
     progress(t("Ibou ouvre une dépense…", "Ibou opens a spend…"));
     const purpose = t("Achat de chaises (test d'attaque)", "Buying chairs (attack test)");
-    const created = await openSpend({ config: demo.config, role: "O1", secret: demo.secrets.O1, amountXof: 10_000, recipient: demo.config.vendorAddress, purpose });
+    const created = await openSpend({ config: demo.config, role: "O1", secret: secretFor(demo.secrets, "O1"), amountXof: 10_000, recipient: demo.config.vendorAddress, purpose });
     await signSpend({
       config: demo.config,
       role: "O1",
-      secret: demo.secrets.O1,
+      secret: secretFor(demo.secrets, "O1"),
       requester: "O1",
       read: { request_id: created.id, amount_xof: 10_000, amount_sats: created.amount_sats, recipient: demo.config.vendorAddress, purpose, expires_at: created.expires_at, path: "A" },
     });
@@ -206,7 +206,7 @@ function CheatList() {
     attempt("alone", t("Préparation…", "Preparing…"), async (progress) => {
       const { request } = await treasurerRequest(progress);
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
-      const answer = await spendAlone({ config: demo.config, role: "O1", secret: demo.secrets.O1, request });
+      const answer = await spendAlone({ config: demo.config, role: "O1", secret: secretFor(demo.secrets, "O1"), request });
       return nodeVerdict(
         answer,
         t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."),
@@ -222,7 +222,7 @@ function CheatList() {
       const decision = await signSpend({
         config: demo.config,
         role: "O2",
-        secret: demo.secrets.O2,
+        secret: secretFor(demo.secrets, "O2"),
         requester: request.requester,
         tamper: true,
         read: { request_id: request.id, amount_xof: Number(request.amount_xof), amount_sats: request.amount_sats, recipient: request.recipient, purpose: request.purpose, expires_at: request.expires_at, path: "A" },
@@ -240,7 +240,7 @@ function CheatList() {
       progress(t("Attente du registre…", "Waiting for the ledger…"));
       await waitForLedger(demo.config.fundId);
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
-      const answer = await recoverOne({ config: demo.config, officer: demo.secrets.O1, assembly: demo.secrets.K });
+      const answer = await recoverOne({ config: demo.config, officer: secretFor(demo.secrets, "O1"), assembly: secretFor(demo.secrets, "K") });
       if (answer.kind === "empty") return { kind: "error", title: t("Aucune pièce à récupérer", "No coin to recover"), detail: "EMPTY" };
       const verdict = nodeVerdict(
         answer,
@@ -255,7 +255,7 @@ function CheatList() {
       await mine(demo.config.csvBlocks);
       await waitForLedger(demo.config.fundId);
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
-      const answer = await recoverOne({ config: demo.config, officer: demo.secrets.O1, assembly: demo.secrets.K });
+      const answer = await recoverOne({ config: demo.config, officer: secretFor(demo.secrets, "O1"), assembly: secretFor(demo.secrets, "K") });
       if (answer.kind === "empty") return { kind: "error", title: t("Aucune pièce à récupérer", "No coin to recover"), detail: "EMPTY" };
       if (answer.kind === "accepted") {
         await confirmSpend(demo.config.fundId, answer.txid, progress, t);
@@ -388,12 +388,31 @@ export function RecoveryScreen({ role }: { role: "O1" | "O2" | "O3" }) {
   const invalidate = useInvalidate();
   const [busy, setBusy] = useState<string | false>(false);
   const [result, setResult] = useState<Verdict | null>(null);
+  const officer = demo.secrets[role];
+  const assembly = demo.secrets.K;
+
+  if (!officer || !assembly) {
+    return (
+      <>
+        <ScreenHeader title={t("Récupération", "Recovery")} onBack={nav.back} />
+        <div className="flex flex-1 flex-col justify-center px-6 pb-10">
+          <p className="break-words text-[16px] font-semibold leading-snug">{t("Ce téléphone n'a pas la clé de l'assemblée.", "This phone does not hold the assembly key.")}</p>
+          <p className="mt-2 break-words text-[14px] leading-snug text-ink-2">
+            {t(
+              "La récupération reste sur le téléphone qui a créé la démo. Celui-ci ne signe que pour un membre du bureau.",
+              "Recovery stays on the phone that created the demo. This one signs for one officer only.",
+            )}
+          </p>
+        </div>
+      </>
+    );
+  }
 
   const tryNow = async () => {
     setBusy(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
     setResult(null);
     try {
-      const answer = await recoverOne({ config: demo.config, officer: demo.secrets[role], assembly: demo.secrets.K });
+      const answer = await recoverOne({ config: demo.config, officer, assembly });
       let seen = false;
       if (answer.kind === "accepted") seen = await confirmSpend(demo.config.fundId, answer.txid, (label) => setBusy(label), t);
       const verdict: Verdict =

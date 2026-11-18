@@ -86,7 +86,9 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
   const approve = () =>
     run(t("Vérification…", "Checking…"), async () => {
       if (!read) throw new Error("no message");
-      const decision = await signSpend({ config: demo.config, role, secret: demo.secrets[role], read, requester: request.requester });
+      const secret = demo.secrets[role];
+      if (!secret) throw new Error("NO_KEY");
+      const decision = await signSpend({ config: demo.config, role, secret, read, requester: request.requester });
       if (decision.kind === "signed") {
         toast({
           tone: "good",
@@ -115,7 +117,9 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
         onConfirm={async (reason) => {
           nav.sheet(null);
           await run(t("Refus…", "Rejecting…"), async () => {
-            await rejectSpend({ config: demo.config, role, secret: demo.secrets[role], requestId: request.id, requester: request.requester, reason });
+            const secret = demo.secrets[role];
+            if (!secret) throw new Error("NO_KEY");
+            await rejectSpend({ config: demo.config, role, secret, requestId: request.id, requester: request.requester, reason });
             toast({ tone: "info", title: t("Demande refusée", "Request rejected"), body: t(`${person.first} est prévenu par message chiffré.`, `${person.first} is told by encrypted message.`) });
           });
         }}

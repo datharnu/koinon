@@ -1,30 +1,10 @@
-import { createHash } from "node:crypto";
+import { auditDigest, verifyAuditChain, type AuditChainRow } from "@koinon/core/proof";
 import type { DatabaseSync } from "node:sqlite";
 
-export interface AuditRow {
-  seq: number;
-  prev_hash: string;
-  hash: string;
-  at: string;
-  actor: string;
-  action: string;
-  request_id: string | null;
-  detail: string;
-}
-
-const GENESIS = "0".repeat(64);
+export interface AuditRow extends AuditChainRow {}
 
 export function auditHash(row: Omit<AuditRow, "hash">): string {
-  const body = [
-    row.seq,
-    row.prev_hash,
-    row.at,
-    row.actor,
-    row.action,
-    row.request_id ?? "",
-    row.detail,
-  ].join("|");
-  return createHash("sha256").update(body).digest("hex");
+  return auditDigest(row);
 }
 
 export function appendAudit(
@@ -41,7 +21,7 @@ export function appendAudit(
     .get(fundId) as { seq: number; hash: string } | undefined;
   const row: Omit<AuditRow, "hash"> = {
     seq: (previous?.seq ?? 0) + 1,
-    prev_hash: previous?.hash ?? GENESIS,
+    prev_hash: previous?.hash ?? "0".repeat(64),
     at,
     actor,
     action,
@@ -56,13 +36,6 @@ export function appendAudit(
 }
 
 export function verifyAudit(rows: AuditRow[]): { ok: boolean; seq: number | null } {
-  let previous = GENESIS;
-  for (const row of rows) {
-    const expected = auditHash({ ...row, prev_hash: row.prev_hash });
-    if (row.prev_hash !== previous || row.hash !== expected) {
-      return { ok: false, seq: row.seq };
-    }
-    previous = row.hash;
-  }
-  return { ok: true, seq: null };
+  const checked = verifyAuditChain(rows);
+  return { ok: checked.ok, seq: checked.seq };
 }

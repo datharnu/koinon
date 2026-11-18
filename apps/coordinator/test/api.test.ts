@@ -58,6 +58,9 @@ function chain(blocks: string[], seen: string[], mempool: string[] = []): Bitcoi
     async getMempoolHex() {
       return [...mempool];
     },
+    async getRawTransaction() {
+      throw new Error("missing transaction");
+    },
   };
 }
 
@@ -434,6 +437,68 @@ describe("coordinator", () => {
     });
     const fund = await call(app, "GET", `/v1/funds/${fundId}`);
     expect(fund.json.balance_sats).toBe("0");
+    await app.close();
+  });
+});
+
+describe("fund proof", () => {
+  it("returns bitcoind hex only when the transaction belongs to the fund", async () => {
+    const held = "ab".repeat(32);
+    const absent = "cd".repeat(32);
+    const hex = "02".repeat(40);
+    const bitcoin: BitcoinClient = {
+      async getBlockCount() {
+        return 5;
+      },
+      async getBlockHash() {
+        return "h0";
+      },
+      async getBlockHex() {
+        return Buffer.alloc(80).toString("hex");
+      },
+      async sendRawTransaction() {
+        return held;
+      },
+      async getMempoolHex() {
+        return [];
+      },
+      async getRawTransaction(txid) {
+        if (txid === held) return hex.toUpperCase();
+        throw new Error("no such transaction");
+      },
+    };
+    const app = buildApp({ db: openDatabase(":memory:"), bitcoin, fetchEur: async () => "60000", now: () => NOW, logger: false });
+    const created = await call(app, "POST", "/v1/funds", fundBody());
+    const fundId = created.json.id as string;
+    const missing = await call(app, "GET", `/v1/funds/${fundId}/proof/${held}`);
+    expect(missing.status).toBe(404);
+    app.db
+      .prepare(
+        `INSERT INTO utxos (fund_id, txid, vout, idx, change, sats, xof_at_receipt, block_height, seen_at)
+         VALUES (?, ?, 0, 0, 0, '1000', NULL, 4, ?)`,
+      )
+      .run(fundId, held, NOW.toISOString());
+    app.db
+      .prepare(
+        `INSERT INTO spends (fund_id, txid, sats_in, sats_out, fee_sats, block_height, request_id, xof_at_spend, seen_at)
+         VALUES (?, ?, '1000', '900', '100', -1, NULL, NULL, ?)`,
+      )
+      .run(fundId, held, NOW.toISOString());
+    const proof = await call(app, "GET", `/v1/funds/${fundId}/proof/${held}`);
+    expect(proof.status).toBe(200);
+    expect(proof.json).toMatchObject({
+      txid: held,
+      hex,
+      kind: "spend",
+      confirmations: 0,
+      network: "regtest",
+      regtest_sats_have_no_value: true,
+    });
+    const other = await call(app, "GET", `/v1/funds/${fundId}/proof/${absent}`);
+    expect(other.status).toBe(404);
+    expect(other.json.code).toBe("NOT_FOUND");
+    const malformed = await call(app, "GET", `/v1/funds/${fundId}/proof/${"zz".repeat(32)}`);
+    expect(malformed.status).toBe(404);
     await app.close();
   });
 });

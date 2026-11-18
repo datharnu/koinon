@@ -1,36 +1,13 @@
 import type { Role } from "@koinon/core";
 import type { SpendRequestMessage } from "@koinon/nostr";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints, type RequestView } from "../lib/api";
 import { inbox } from "../lib/flows";
+import { requestQuery, useFund, useLedger, useMembers, useRequest } from "../lib/queries";
+import type { RequestView } from "../lib/http";
 import { myRequests, type FundConfig, type Secret } from "../lib/vault";
 import { useDemo } from "./context";
 
-export function useFund(fundId: string) {
-  return useQuery({ queryKey: ["fund", fundId], queryFn: () => endpoints.fund(fundId), refetchInterval: 3_000 });
-}
-
-export function useLedger(fundId: string) {
-  return useQuery({ queryKey: ["ledger", fundId], queryFn: () => endpoints.ledger(fundId), refetchInterval: 3_000 });
-}
-
-export function useMembers(fundId: string) {
-  return useQuery({ queryKey: ["members", fundId], queryFn: () => endpoints.members(fundId), staleTime: 30_000 });
-}
-
-const settled = new Set(["confirmed", "rejected", "expired", "failed"]);
-
-function requestQuery(id: string) {
-  return {
-    queryKey: ["request", id],
-    queryFn: () => endpoints.request(id),
-    refetchInterval: (query: { state: { data?: RequestView } }) => (query.state.data && settled.has(query.state.data.status) ? false : 2_500),
-  };
-}
-
-export function useRequest(id: string) {
-  return useQuery(requestQuery(id));
-}
+export { useFund, useLedger, useMembers, useRequest };
 
 export interface InboxItem {
   requestId: string;
@@ -40,11 +17,13 @@ export interface InboxItem {
 }
 
 /** The officer's inbox is the relay: gift wraps addressed to their Nostr key, unwrapped here. */
-export function useInbox(config: FundConfig, role: Role, secret: Secret, pulse: number) {
+export function useInbox(config: FundConfig, role: Role, secret: Secret | undefined, pulse: number) {
   const publicKey = role === "K" ? config.assembly.nostrPub : config.officers[role].nostrPub;
   return useQuery({
     queryKey: ["inbox", config.fundId, role, pulse],
+    enabled: Boolean(secret),
     queryFn: async () => {
+      if (!secret) return [];
       const parsed = await inbox(secret, publicKey);
       const items = new Map<string, InboxItem>();
       if (role !== "K") {
@@ -85,7 +64,7 @@ export function useOfficerRequests(role: Role) {
 
 export function bucketOf(request: RequestView | undefined, role: Role): RequestBucket {
   if (!request) return "open";
-  if (settled.has(request.status)) return "done";
+  if (request.status === "confirmed" || request.status === "rejected" || request.status === "expired" || request.status === "failed") return "done";
   const open = request.status === "pending" || request.status === "draft";
   if (open && !request.approvals.some((approval) => approval.officer === role)) return "sign";
   return "open";

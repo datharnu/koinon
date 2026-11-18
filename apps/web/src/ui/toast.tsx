@@ -40,20 +40,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     if (timer) window.clearTimeout(timer);
   }, []);
 
+  const release = useCallback(
+    (id: number) => {
+      const timer = timers.current.get(id);
+      if (timer) window.clearTimeout(timer);
+      timers.current.set(id, window.setTimeout(() => dismiss(id), 2_000));
+    },
+    [dismiss],
+  );
+
   const value = useMemo(() => push, [push]);
   return (
     <ToastContext.Provider value={value}>
       {children}
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-3">
         {toasts.map((toast) => (
-          <ToastCard key={toast.id} toast={toast} onClose={() => dismiss(toast.id)} onHold={() => hold(toast.id)} />
+          <ToastCard key={toast.id} toast={toast} onClose={() => dismiss(toast.id)} onHold={() => hold(toast.id)} onRelease={() => release(toast.id)} />
         ))}
       </div>
     </ToastContext.Provider>
   );
 }
 
-function ToastCard({ toast, onClose, onHold }: { toast: Toast; onClose: () => void; onHold: () => void }) {
+function ToastCard({ toast, onClose, onHold, onRelease }: { toast: Toast; onClose: () => void; onHold: () => void; onRelease: () => void }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const icon =
@@ -71,7 +80,7 @@ function ToastCard({ toast, onClose, onHold }: { toast: Toast; onClose: () => vo
       </span>
     );
   return (
-    <div role="status" onPointerEnter={onHold} className="toast-in pointer-events-auto w-full max-w-[420px] rounded-[22px] bg-surface p-3 shadow-[0_12px_40px_-12px_rgb(0_0_0/0.35)] ring-1 ring-line">
+    <div role="status" onPointerEnter={onHold} onPointerLeave={onRelease} className="toast-in pointer-events-auto w-full max-w-[420px] rounded-[22px] bg-surface p-3 shadow-[0_12px_40px_-12px_rgb(0_0_0/0.35)] ring-1 ring-line">
       <div className="flex items-start gap-3">
         <span className="shrink-0">{icon}</span>
         <div className="min-w-0 flex-1 pt-0.5">

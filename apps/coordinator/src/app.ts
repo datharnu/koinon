@@ -328,6 +328,31 @@ function buildServer(deps: AppDeps): FastifyInstance {
     return { id: row.id, status: "broadcast", txid };
   });
 
+  app.get("/v1/funds/:id/proof/:txid", async (request) => {
+    const fund = fundById(deps.db, routeId(request));
+    const txid = routeTxid(request);
+    const kind = fundTxKind(deps.db, fund.id, txid);
+    if (!kind) throw new KoinonError(ErrorCode.NOT_FOUND, "transaction is not in this fund");
+    let hex: string;
+    try {
+      hex = await deps.bitcoin.getRawTransaction(txid);
+    } catch {
+      throw new KoinonError(ErrorCode.NOT_FOUND, "bitcoind has no such transaction");
+    }
+    if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length < 20 || hex.length > 400_000) {
+      throw new KoinonError(ErrorCode.NOT_FOUND, "bitcoind returned no transaction");
+    }
+    let confirmations: number | null = null;
+    try {
+      const tip = await deps.bitcoin.getBlockCount();
+      const height = txHeight(deps.db, fund.id, txid);
+      if (height !== null) confirmations = height < 0 ? 0 : Math.max(0, tip - height + 1);
+    } catch {
+      confirmations = null;
+    }
+    return { txid, hex: hex.toLowerCase(), kind, confirmations, network: "regtest", regtest_sats_have_no_value: true };
+  });
+
   app.get("/v1/funds/:id/audit", async (request) => {
     const fund = fundById(deps.db, routeId(request));
     const rows = auditRows(deps.db, fund.id);
@@ -467,6 +492,31 @@ function parseIndexes(raw: string | null, fallback: number | null): number[] {
     if (parsed.length) return parsed;
   }
   return fallback === null ? [] : [fallback];
+}
+
+function fundTxKind(db: DatabaseSync, fundId: string, txid: string): "spend" | "contribution" | null {
+  const spend = db.prepare("SELECT 1 AS ok FROM spends WHERE fund_id = ? AND txid = ?").get(fundId, txid);
+  if (spend) return "spend";
+  const utxo = db.prepare("SELECT 1 AS ok FROM utxos WHERE fund_id = ? AND txid = ?").get(fundId, txid);
+  if (utxo) return "contribution";
+  return null;
+}
+
+function txHeight(db: DatabaseSync, fundId: string, txid: string): number | null {
+  const spend = db.prepare("SELECT block_height FROM spends WHERE fund_id = ? AND txid = ?").get(fundId, txid) as
+    | { block_height: number }
+    | undefined;
+  if (spend) return spend.block_height;
+  const utxo = db
+    .prepare("SELECT block_height FROM utxos WHERE fund_id = ? AND txid = ? ORDER BY block_height DESC LIMIT 1")
+    .get(fundId, txid) as { block_height: number } | undefined;
+  return utxo?.block_height ?? null;
+}
+
+function routeTxid(request: FastifyRequest): string {
+  const txid = (request.params as { txid?: string }).txid?.toLowerCase();
+  if (!txid || !/^[0-9a-f]{64}$/.test(txid)) throw new KoinonError(ErrorCode.NOT_FOUND, "not found");
+  return txid;
 }
 
 function routeId(request: FastifyRequest): string {
