@@ -92,7 +92,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 
 ## Docs, written 17 Nov 2026
 
-`README.md`, `docs/THREAT_MODEL.md`, and `docs/UI_CONTRACT.md` are written. They describe the runs above. They do not add a run of compose, of GitHub Actions, or of a live mempool price.
+`README.md`, `docs/THREAT_MODEL.md`, and `docs/UI_CONTRACT.md` were written on 17 Nov 2026 against the runs above. The GitHub Actions section and the public host were added after that. A live mempool price is still absent.
 
 ## Web app, 17 Nov 2026
 
@@ -104,13 +104,13 @@ The previous run failed only at the log scan: the e2e container runs as root and
 - Unlock: a passkey's WebAuthn PRF output (32 bytes) is the secret the keystore encrypts with. Create sends `prf: {}` so Safari 18 / iCloud and Android GPM enable hmac-secret; the 32 bytes come from a following `get()` with `eval` (Chrome may already return them at create). `getClientCapabilities()["extension:prf"] === false` hides the passkey button. Windows Hello has no hmac-secret: create reports `prf.enabled === false` and the UI falls back to an 8-digit code without a second prompt. The three client shapes are covered by `apps/web/src/lib/passkey.test.ts` (7 passed). Chrome 157 on this Mac reports `extension:prf: true`. A live Safari Touch ID, Android GPM, or Windows Hello ceremony was not completed here — those need the device.
 - The "Try to cheat" sheet opens its own 10 000 F request when the Treasurer has none pending, so a pending request stays on the Secretary's phone after the attack.
 - After a recovery is accepted, the indexer reads bitcoind's mempool so the spend can show as 0 confirmations (francs taken from the due's receipt, not a new rate). The demo still mines one block so the cheat-sheet story ends confirmed. Contributions still appear only after a mined block.
-- Earlier the same day, the signing bundle was 708 kB, 228 kB gzipped, and it loaded on `/app` and `/fonds`. The next build printed `pinpad-BfLbtgBt.js` at 730.43 kB, gzip 227.98 kB. The build after the toast and proof-error copy, still Vite 8.3.8, printed `pinpad-BoxGhd4s.js` at the same 730.43 kB, gzip 227.98 kB. That file is the signing code. The import graph loads it from `/app` and `/cosign`. `/` and `/fonds/:id` do not import it. The measured route sums are in the README. A later build can change the hash in the filename.
+- Earlier the same day, the signing bundle was 708 kB, 228 kB gzipped, and it loaded on `/app` and `/fonds`. The next build printed `pinpad-BfLbtgBt.js` at 730.43 kB, gzip 227.98 kB. The build after the toast and proof-error copy, still Vite 8.3.8, printed `pinpad-BoxGhd4s.js` at the same 730.43 kB, gzip 227.98 kB. That was the signing code in the first measured build. The build re-measured on 18 Nov 2026, the one the VPS serves, printed `pinpad-UlJSUC62.js`, 730.52 kB, gzip 228.01 kB. The import graph loads the signing chunk from `/app` and `/cosign`. `/` and `/fonds/:id` do not import it. The measured route sums are in the README.
 - `@koinon/core` hashes with `@noble/hashes` instead of `node:crypto` so the same code signs in the browser.
 
 ## Not started
 
 - A run of `docker compose up` on a developer machine (CI runs it).
-- A public coordinator. The homepage is on Vercel at https://koinon-ten.vercel.app (static `apps/web` build, fetched 17 Nov 2026). `/app` and `/v1` are not a live demo on that host. `docs/DEPLOY.md` is the VPS path.
+- A public demo on one origin is up: Compose on the HostAfrica VPS, [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io/), `/app` and `/v1/health` ok on 18 Nov 2026. A static file host has no `/v1` and no relay.
 - A service worker or offline mode. The app needs the coordinator and the relay.
 - Wolof strings. The app is French and English.
 
@@ -118,7 +118,7 @@ The previous run failed only at the log scan: the e2e container runs as root and
 
 - Signing stack is `bitcoinjs-lib` 7.0.5. Custom finalizer goes through `Psbt.finalizeInput`. `@bitcoinerlab/miniscript` 2.0.1 compiles the script. Its satisfier will not run because the expression repeats keys, so witnesses are built in `packages/core/src/witness.ts` and proved on regtest.
 - Coin type is testnet (`1'`) on regtest, path `m/48'/1'/0'/2'/0/index`. Change outputs use chain 1, index 0.
-- `pnpm test` does not start bitcoind. `pnpm kill-test`, `pnpm coordinator-spend`, `pnpm cli-demo`, and `pnpm e2e` do. `pnpm nostr-test` starts only the loopback relay. The GitHub workflow is written and has not been run.
+- `pnpm test` does not start bitcoind. `pnpm kill-test`, `pnpm coordinator-spend`, `pnpm cli-demo`, and `pnpm e2e` do. `pnpm nostr-test` starts only the loopback relay. The GitHub workflow has run. [Run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764) passed unit tests and the compose e2e. It does not include the member-proof tests added after it. [Run 44310515954](https://github.com/datharnu/koinon/actions/runs/44310515954) on 18 Nov 2026 failed the log scan on a substring match. That failure is kept in the section above.
 - Compose publishes the coordinator and the relay on 127.0.0.1. bitcoind RPC stays on the internal network. A host command that mines or spends uses `docker compose --profile tools run --rm cli`. The relay in compose is `packages/nostr/src/local-relay.ts`. It does not authenticate publishers.
 - The compose price is a separate fixture process. The coordinator fetches it. There is no hardcoded price in the coordinator. If the fixture is down, a spend is `RATE_UNAVAILABLE`.
 - Officer keys are encrypted with PBKDF2-SHA256 (310,000 rounds) and AES-256-GCM. The server never receives the file or the pin. A file that claims fewer rounds is refused.

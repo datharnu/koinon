@@ -19,7 +19,7 @@
   <a href="docs/media/koinon-demo.mp4"><img src="docs/media/film-poster.jpg" width="820" alt="Watch the Koinon film, 2 minutes 15. Recorded 18 Nov 2026 from the local app: two phones, a 60,000 F fund, the refusals, the member check, and the README limits. Regtest. The voice is a neural draft, not a person." /></a>
 </p>
 
-The public demo is Docker Compose on a Nigeria VPS. Caddy serves the homepage, `/app`, `/v1`, and `/relay` on one HTTPS origin. The spend rule runs on regtest, Bitcoin Core 32.1. It did not run on mainnet. The film is that demo, recorded locally. It is not a mainnet payment.
+The public demo is Docker Compose on a Nigeria VPS. Caddy serves the homepage, `/app`, `/v1`, and `/relay` on one HTTPS origin. The spend rule runs on regtest, Bitcoin Core 32.1. It did not run on mainnet. The film was recorded 18 Nov 2026 from the local app, not from the VPS. It is not a mainnet payment.
 
 </div>
 
@@ -37,7 +37,7 @@ On 17 Nov 2026, 1,000 XOF locked at 2,541 sats. The euro price in that run was a
 | 2 officer signatures | accepted, 1 confirmation | tx `9f9144009c779907d8048f34a336dea3398251b595ee2846d6a502f127aa1728` |
 | Path B before 10 blocks | bitcoind refused it, `non-BIP68-final` | same command |
 | Path B after 10 blocks | accepted, 1 confirmation | tx `318088820b2e9e0e1f52565c21f733d3e96f88375804bbdd6ae5632d0ad880d9` |
-| 1,000 XOF at the fixture | 2,541 sats, then a confirmed spend | `pnpm e2e`, tx `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865` |
+| 1,000 XOF at the fixture | 2,541 sats, then a confirmed spend | `pnpm e2e`, later run the same day, tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd` |
 
 > **The script is the guard.** The coordinator can build a transaction. It cannot make bitcoind accept one signature, and an officer's own check refuses a transaction that no longer matches the request.
 
@@ -46,8 +46,8 @@ On 17 Nov 2026, 1,000 XOF locked at 2,541 sats. The euro price in that run was a
 | bitcoind rejected 1 signature and accepted 2 | Local regtest, Bitcoin Core 32.1, not mainnet |
 | bitcoind rejected path B, then accepted it after 10 blocks | `N` is 10 on regtest. A real fund would set about 4,320 blocks. That setting was not used |
 | A swapped recipient was refused before any signature | The officer's function. The coordinator is not trusted for this check |
-| 12 members, a confirmed spend, an expired request, and a broken audit row | `pnpm e2e` on the host. Docker Compose was not started on this machine |
-| Gift-wrapped request and approval | Loopback relay. It does not authenticate publishers. No public relay |
+| 12 members, a confirmed spend, an expired request, and a broken audit row | `pnpm e2e` on this Mac, without Docker. The public host is that compose file. `/v1/health` was ok on 18 Nov 2026. This checklist was not re-run there |
+| Gift-wrapped request and approval | Loopback relay for this check. It does not authenticate publishers. The VPS serves the same relay at `/relay`, and it accepts any publisher |
 | A member phone can recompute the audit chain and a spend's signatures from the raw transaction | `@noble/hashes` and `@noble/curves` in the browser. It does not run bitcoind's script flags, and it does not count blocks |
 
 The phone is a Bitcoin wallet. It derives BIP39 keys on `m/48'/1'/0'/2'`, builds the P2WSH 2-of-3 plus CSV script, checks the PSBT, and signs. The coordinator never receives the mnemonic. There is no Lightning wallet here. A Lightning node that receives for the fund would hold the pot. This fund is meant to sit for months in a script nobody holds.
@@ -83,7 +83,7 @@ The homepage says "Nobody empties the fund alone." Main button: "Try the demo."
 - A swapped payee stops before signing: `PSBT_MISMATCH`, "the transaction does not pay the requested recipient."
 - Invite link for WhatsApp. No account and no key. The sheet says "Checked on this phone from Bitcoin bytes, not from the server's database," and names Ibou + Coumba only when the link fingerprint matches.
 - French and English switch in the header. Playwright passed at 390×844 (39.2s) and 360×740 (39.8s), headless Chromium on this Mac, not a handset.
-- Signing code loads only on `/app` (370,383 bytes). `/` was 109,054 bytes, `/fonds/:id` 140,460, unknown fund. `/` not measured again.
+- Signing code loads only on `/app` (372,751 bytes). `/` is 109,610 bytes, `/fonds/:id` 142,007, unknown fund. One headless run on the current build, 18 Nov 2026.
 
 Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
 
@@ -98,11 +98,11 @@ Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
 | Homepage | [https://102-68-84-31.sslip.io/](https://102-68-84-31.sslip.io/) |
 | Two-phone demo | [https://102-68-84-31.sslip.io/app](https://102-68-84-31.sslip.io/app) |
 
-Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to the coordinator stack in Docker on that VPS. Passkeys and the Nostr websocket are bound to this hostname. Do not send judges to a second host (for example a static-only deploy) for the interactive demo.
+Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to the coordinator stack in Docker on that VPS. Passkeys are bound to this hostname, and the Nostr websocket is on the same origin. A static-only host has no `/v1` and no relay, so the interactive demo lives only here.
 
-Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) should return `{"ok":true,...}`.
+Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) returned `{"ok":true,"network":"regtest","bitcoind":true,"demo":true}` on 18 Nov 2026.
 
-The CLI is still the proof that bitcoind refused one signature.
+The recorded bitcoind refusals come from the scripts below, not from the live site.
 
 **Five minutes on this Mac, no Docker.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2. This is the 17 Nov script proof. The public site is the compose stack in [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -184,7 +184,7 @@ Metrics a pilot would track, and that this repo has not measured: funds onboarde
 
 ### The problem, sourced
 
-These numbers are why a shared pot is a real object in Senegal. None of them is a count of theft, a count of dahiras, or a Koinon user. The homepage draws the same figures, with the same limits. Read on 18 Nov 2026.
+These numbers are why a shared pot is a real object in Senegal. None of them is a count of theft, a count of dahiras, or a Koinon user. The homepage draws three of them, with the same limits: 57.4% of women, more than 2,500 funds, and 24.1% of UEMOA volume. The 42.5% case count and the GIE registrations are in this table only. Read on 18 Nov 2026.
 
 | Figure | What it counts | What it does not count | Source |
 | --- | --- | --- | --- |
@@ -237,10 +237,11 @@ sequenceDiagram
   participant Node as bitcoind
   O1->>Coord: Create request, CFA amount
   Coord-->>O1: Locked sats, unsigned PSBT
+  O1->>O1: Check the PSBT
+  O1->>Coord: First signature
   O1->>O2: Gift wrap, no PSBT
   O2->>O2: Check recipient, amount, change, fee
-  O2->>Coord: One signature
-  O1->>Coord: Second signature
+  O2->>Coord: Second signature
   Coord->>Node: sendrawtransaction
   Node-->>Coord: txid, or a refusal
 ```
@@ -258,11 +259,11 @@ sequenceDiagram
 | An officer does not sign a swapped payment | `verifySpend` throws before `signVerifiedSpend` adds a signature | The officer must run that check. A patched client can ignore it. The script still requires two keys. |
 | Recovery cannot happen early | bitcoind returned `non-BIP68-final` | Only for the `N` the fund was created with. Regtest uses 10. |
 | The server has no key | Keys are encrypted on the officer's machine. The process has no key file. | Fund creation and member add are unauthenticated. The fund id is the capability. Money still needs two signatures. |
-| Logs omit the person | The e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT | CI also scans every container log from the compose run (`scripts/log-scan.sh`). It checks fixed patterns and two adjacent words of one seed, not every word of every seed. One word alone is not a hit. |
+| Logs omit the person | The Mac e2e scan found no pseudonym, seed word, `xprv`, `nsec1`, pin, or PSBT. CI run 44156940764 passed the same scan | Run 44310515954 reported a seed hit. The word was `act` inside `transaction`. The scan now requires two adjacent words. One word alone is not a hit. |
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
 | A 5,000 F due is not eaten by the fee | At the 60,000 EUR fixture, 5,000 F is 12,705 sats. A P2WPKH→P2WSH landing is ~122 vbytes. At 2 sat/vB that is 244 sats, 96 F, paid by the member's wallet, not subtracted from the due. At 5 sat/vB, 240 F. | This is an association treasury, not a 500 F weekly tontine. A spend of one 2-of-3 input with change, at 2 sat/vB, is 600 sats (236 F) from `estimateVbytes(1, 2)` in `packages/core/src/coinselect.ts`. |
 
-Not claimed: mainnet, an audit, Lightning, Mobile Money, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. A static file host has no `/v1` and no relay socket. Docker Compose is the public demo: Caddy on the HostAfrica VPS, one origin, checked 18 Nov 2026. The same file ran in GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)): all nine checks and the container log scan passed. The bitcoind refusals in Evidence are `pnpm kill-test` and `pnpm e2e` on this Mac, where Docker was not installed.
+Not claimed: mainnet, an audit, Lightning, Mobile Money, collusion protection, or publisher authentication on the demo relay. The VPS serves that relay at `/relay`. It accepts any publisher. A static file host has no `/v1` and no relay socket. Docker Compose is the public demo: Caddy on the HostAfrica VPS, one origin. `/v1/health` was ok on 18 Nov 2026. The same file ran in GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)): nine checks inside Compose, and the container log scan as its own step. Both passed. A later run, [44310515954](https://github.com/datharnu/koinon/actions/runs/44310515954) on 18 Nov 2026, failed that scan because one seed word matched inside an ordinary word. The scan now requires two adjacent words. The failure is kept in [docs/DEFERRED.md](docs/DEFERRED.md). The bitcoind refusals in Evidence are `pnpm kill-test` and `pnpm e2e` on this Mac, where Docker was not installed.
 
 Review: none. No third party has read this. The severities in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) are the author's.
 
@@ -281,25 +282,25 @@ Recorded 17 Nov 2026 on this machine. Bitcoin Core 32.1. Long output is in [docs
 | `pnpm coordinator-spend` | Live price timed out, `RATE_UNAVAILABLE`. A labeled test double then spent. tx `057ec038f9356186151ab9fc7498e1541c9ec00c7e76a879d90ed3f8eb980bda`. |
 | `pnpm nostr-test` | Gift wrap delivered. Ciphertext had no purpose. Tamper produced no approval. |
 | `pnpm cli-demo` | The officer path, a veto, and recovery. Recovery tx `6c1ccaa39387ef08ccdfcdd1547fd4c877594e430b23db9d21d3d4d298ab68f7`. |
-| `pnpm e2e` | Re-run the same day, host bitcoind, Docker not installed. 10 checks passed. 1,000 XOF locked at 2,541 sats. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. An earlier run the same day: spend `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865`, recovery `7f50d10e467ee5ccb5342c6de9cbb863c9a817d410cb7a39ee448ef150037cc1`. |
-| `pnpm test` | After the member-proof cases: core 30, coordinator 10, nostr 2. They do not start bitcoind. Earlier the same day: core 22, coordinator 2, nostr 2. At the script proof: 7. |
+| `pnpm e2e` | Re-run the same day, host bitcoind, Docker not installed. 10 checks passed. The tenth is the log line on this Mac. CI's nine checks are that list without the log line. CI scans container logs as a separate step. 1,000 XOF locked at 2,541 sats. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. An earlier run the same day: spend `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865`, recovery `7f50d10e467ee5ccb5342c6de9cbb863c9a817d410cb7a39ee448ef150037cc1`. |
+| `pnpm test` | Current: core 30, coordinator 11, nostr 2. They do not start bitcoind. Earlier the same day: core 22, coordinator 2, nostr 2. At the script proof: 7. |
 | `pnpm ui-walk` | Playwright, one worker, against `http://localhost:5173` and the host coordinator. 390×844 passed in 39.2s. 360×740 passed in 39.8s. 2 passed. The fund was created with an 8-digit code. |
 
 `pnpm test` earlier the same day, at the script proof, was 7. That count is kept in [docs/POLICY.md](docs/POLICY.md). The later count does not erase it.
 
-GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764). Unit tests and the compose e2e passed. The live site is the web build, not that run. That run does not include the member-proof tests added after it.
+GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764). Unit tests and the compose e2e passed: nine checks inside Compose, then the container log scan. The live site is the web build, not that run. That run does not include the member-proof tests added after it. [Run 44310515954](https://github.com/datharnu/koinon/actions/runs/44310515954), 18 Nov 2026, failed the log scan on a one-word substring. The scan now requires two adjacent words.
 
 `pnpm build:web` on this machine, Vite 8.3.8, then one cold load in headless Chromium. Cache off. Latency 400 ms. Download and upload 400 × 1024 / 8 bytes per second. CPU throttle 4. Viewport 390×844. The server was `vite preview` on `127.0.0.1:4173`. This is not a phone and not a VPS. Time is until the route's own text was on screen. Transfer is `transferSize`, which includes headers.
 
 | Route | Visible | Transfer | What loaded |
 | --- | --- | --- | --- |
-| `/` | 3,839 ms | 109,054 bytes | Entry, home, avatar, CSS. No signing code. |
-| `/fonds/:id` | 4,249 ms | 140,460 bytes | Those, plus the proof chunk. No signing code. The fund id was unknown, so the screen was "Fund not found". |
-| `/app` | 8,781 ms | 370,383 bytes | Those, plus the signing chunk. Its last byte was at 8,586 ms. |
+| `/` | 3,882 ms | 109,610 bytes | Entry, home, avatar, CSS. No signing code. |
+| `/fonds/:id` | 4,258 ms | 142,007 bytes | Those, plus the proof chunk. No signing code. The fund id was unknown, so the screen was "Fund not found". |
+| `/app` | 9,283 ms | 372,751 bytes | Those, plus the proof and signing chunks. The signing chunk's last byte was at 8,616 ms. No coordinator was running behind `vite preview`. |
 
-Vite's own gzip line for the signing chunk, `pinpad-BoxGhd4s.js`, was 730.43 kB raw, 227.98 kB gzip. The proof chunk, `phone-z1fi-Luk.js`, was 114.90 kB raw, 39.26 kB gzip. An earlier build the same day was 708 kB raw, 228 kB gzip, and that file loaded on `/fonds` as well. It no longer does. The font files in that transfer were Plus Jakarta (Latin 27.34 kB, Latin extended 21.72 kB, Vietnamese 8.35 kB). They were not in the transfer above at the moment the text appeared. The `/` row is that homepage. The landing page was redesigned twice and mobile language controls were added after this run; `/` has not been measured again. Its chunk is now `Home-Dw-LUIpZ.js` (27.34 kB / 9.09 kB gzip, down from 52.86 / 16.51 for the previous version), plus one hero capture of `/app` in WebP (38.6–43.1 kB, one file per language and theme, only one loads). `/fonds/:id` and `/app` still share the same build structure; the signing chunk is now `pinpad-BUhpHEL4.js` (730.53 kB / 227.99 kB gzip). The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
+Measured 18 Nov 2026 on the build the VPS serves: `index-DNZNbqZM.js`, `Home-BmW8gNjq.js`, `phone-CaqK5Sdg.js`, `pinpad-UlJSUC62.js`. The first run, before the homepage redesign, was `/` 3,839 ms and 109,054 bytes, `/fonds/:id` 4,249 ms and 140,460 bytes, `/app` 8,781 ms and 370,383 bytes.
 
-<!-- TODO: first commit hash, once the repo has one. -->
+Vite's own size lines for that build: signing chunk `pinpad-UlJSUC62.js` 730.52 kB raw, 228.01 kB gzip. Proof chunk `phone-CaqK5Sdg.js` 116.76 kB raw, 39.85 kB gzip. Homepage chunk `Home-BmW8gNjq.js` 26.63 kB raw, 8.92 kB gzip. An earlier build was 708 kB raw, 228 kB gzip for the signing code, and that file loaded on `/fonds` as well. It no longer does. Fonts and the homepage hero image were not in the transfer at the moment the text appeared. The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
 
 <a id="decisions"></a>
 
@@ -490,7 +491,8 @@ The public host is the same file with `KOINON_SITE`, `KOINON_WEB_BIND`, and `KOI
 | 1 signature refused, 2 accepted | `pnpm kill-test`, 17 Nov 2026, Bitcoin Core 32.1 |
 | Path B refused, then accepted after 10 blocks | same command, both txids in the table above |
 | Signer refuses a swapped recipient, a wrong amount, foreign change, a fee over the cap, a foreign input | `pnpm test` in core, and `pnpm tamper-test` |
-| Coordinator spend, veto path, audit tamper | `pnpm coordinator-spend` and `pnpm e2e` |
+| Coordinator spend and audit tamper | `pnpm coordinator-spend` and `pnpm e2e` |
+| Veto by an officer | `pnpm cli-demo` |
 | Gift wrap hides the purpose | `pnpm nostr-test` and `pnpm e2e` |
 | Keys encrypted, absent from the file and the transcript | `pnpm cli-demo` |
 | 12 members and the full checklist | `pnpm e2e` |
@@ -502,7 +504,7 @@ The public host is the same file with `KOINON_SITE`, `KOINON_WEB_BIND`, and `KOI
 <summary><strong>Built, not observed</strong></summary>
 
 - A restarted coordinator reading the same database.
-- Two machines, or a public relay.
+- Two officers on two separate machines, or a relay other than the demo relay.
 - A pin typed at a prompt. The demo passes `--pin`.
 - A live mempool price. The one attempt timed out.
 - Path B broadcast through the coordinator's HTTP API. The coordinator refuses an immature coin before it builds the PSBT. Recovery in the CLI talks to bitcoind directly, and that path was observed.

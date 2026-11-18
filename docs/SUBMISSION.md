@@ -52,7 +52,7 @@ An approval is a hash of the fields the officer can change. The phone recomputes
 | A member phone verified the witness and the audit chain locally | It does not re-run bitcoind. Confirmations on screen are the coordinator's number. A rewritten audit chain from a new genesis still matches. |
 | The server holds no key | Creating a fund and adding a member are unauthenticated. The fund id is the capability. Money still needs two signatures. |
 
-Not claimed: an audit, mainnet, Lightning, Mobile Money, a public relay that authenticates publishers, or a spend a judge can broadcast from the Vercel site. `https://koinon-ten.vercel.app` is the static homepage. `GET /v1/health` there is 404.
+Not claimed: an audit, mainnet, Lightning, Mobile Money, or publisher authentication on the demo relay. The public demo is one origin, [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io/). `/v1/health` was ok on 18 Nov 2026. The relay on that origin accepts any publisher.
 
 A server that enforces the second approval can be changed. A pot that sits on one node for the length of a payment is a pot that node holds. This fund is a script. Nobody holds it.
 
@@ -62,24 +62,23 @@ Recorded 17 Nov 2026 on this machine. Bitcoin Core 32.1. Docker was not installe
 
 | Command | Result |
 | --- | --- |
-| `pnpm test` | core 30, coordinator 10, nostr 2. Exit 0. They do not start bitcoind. |
+| `pnpm test` | core 30, coordinator 11, nostr 2. Exit 0. They do not start bitcoind. |
 | `pnpm typecheck` | Exit 0. |
-| `pnpm build:web` | Vite 8.3.8. Signing chunk `pinpad-BoxGhd4s.js`, 730.43 kB, gzip 227.98 kB. Proof chunk `phone-z1fi-Luk.js`, 114.90 kB, gzip 39.26 kB. `/` and `/fonds/:id` do not load the signing chunk. |
-| Slow 3G, headless Chromium, CPU ×4, cache off, 390×844, one run | `/` visible 3,839 ms, 109,054 bytes. `/fonds/:id` 4,249 ms, 140,460 bytes, unknown fund, screen was "Fund not found". `/app` 8,781 ms, 370,383 bytes, signing chunk's last byte at 8,586 ms. Not a handset. Not a VPS. |
+| `pnpm build:web` | Vite 8.3.8, the build the VPS serves. Signing chunk `pinpad-UlJSUC62.js`, 730.52 kB, gzip 228.01 kB. Proof chunk `phone-CaqK5Sdg.js`, 116.76 kB, gzip 39.85 kB. Homepage chunk `Home-BmW8gNjq.js`, 26.63 kB, gzip 8.92 kB. `/` and `/fonds/:id` do not load the signing chunk. |
+| Slow 3G, headless Chromium, CPU ×4, cache off, 390×844, one run, 18 Nov 2026 | `/` visible 3,882 ms, 109,610 bytes. `/fonds/:id` 4,258 ms, 142,007 bytes, unknown fund, screen was "Fund not found". `/app` 9,283 ms, 372,751 bytes, signing chunk's last byte at 8,616 ms. Not a handset. Not a VPS. The first run, before the homepage redesign: 3,839 ms / 109,054, 4,249 ms / 140,460, 8,781 ms / 370,383. |
 | `pnpm ui-walk` | Playwright. 390×844 passed in 39.2s. 360×740 passed in 39.8s. 2 passed. Create, one-signature refusal, tampered PSBT, two-signature spend, member witness check, early recovery refusal, mine 10, `Awa · recovery`. |
-| `pnpm e2e` | 10 checks passed. Exit 0. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. |
+| `pnpm e2e` | 10 checks passed on this Mac. The tenth is the log line. CI counted nine checks inside Compose and scanned container logs separately. Exit 0. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. |
 
 Earlier the same day, and still in the README: one signature `NULLFAIL`; two signatures tx `9f9144009c779907d8048f34a336dea3398251b595ee2846d6a502f127aa1728`; path B after 10 blocks tx `318088820b2e9e0e1f52565c21f733d3e96f88375804bbdd6ae5632d0ad880d9`. GitHub Actions run [44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764) passed before the member-proof tests. It has not run the Playwright spec.
 
 ## What's next
 
-1. One domain for the site, `/v1`, and the relay. A passkey is bound to one domain. Vercel cannot proxy the API or the socket.
-2. A real mempool.space price, shown next to the fixture.
-3. N at about 4,320 blocks, after the 10-block proof is boring.
-4. Someone other than the author reads the script. Then a conversation about mainnet. Not before.
-5. Lightning stays out. A node that receives into a channel holds the coins. The point of this fund is that nobody holds the pot.
-6. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
-7. A Mobile Money bridge, including a cash-in in front of the fund, waits until a pilot trusts the script. The bridge would not replace the two signatures.
+1. A real mempool.space price, shown next to the fixture.
+2. N at about 4,320 blocks, after the 10-block proof is boring.
+3. Someone other than the author reads the script. Then a conversation about mainnet. Not before.
+4. Lightning stays out. A node that receives into a channel holds the coins. The point of this fund is that nobody holds the pot.
+5. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
+6. A Mobile Money bridge, including a cash-in in front of the fund, waits until a pilot trusts the script. The bridge would not replace the two signatures.
 
 ## Pilot targets
 

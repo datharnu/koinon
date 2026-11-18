@@ -2,7 +2,7 @@
 
 Regtest only. The faucet and the miner are on, so anyone with the link can create a fund and play. Sats have no value.
 
-The public demo is sized for an Ubuntu VPS with 2 vCPU and 4 GB RAM. Point a DNS `A` record at it first. Vercel can host the static files, and it cannot proxy `/v1` or the WebSocket at `/relay`. A passkey is bound to one domain, so `/app` and `/fonds/:id` have to be that same origin as the API. `infra/Caddyfile` is that origin. `restart: unless-stopped` is set on bitcoind, the price fixture, the relay, the coordinator, and the web container so one crash does not end the demo. Bootstrap, the e2e job, and the CLI stay `restart: "no"`.
+The public demo is sized for an Ubuntu VPS with 2 vCPU and 4 GB RAM. It is already [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io/). A static host can serve the files, and it cannot proxy `/v1` or the WebSocket at `/relay`, so the demo does not use one. A passkey is bound to one domain, so `/app` and `/fonds/:id` have to be that same origin as the API. `infra/Caddyfile` is that origin. `restart: unless-stopped` is set on bitcoind, the price fixture, the relay, the coordinator, and the web container so one crash does not end the demo. Bootstrap, the e2e job, and the CLI stay `restart: "no"`.
 
 ```sh
 git clone https://github.com/datharnu/koinon && cd koinon
