@@ -19,7 +19,7 @@
   <a href="docs/media/koinon-demo.mp4"><img src="docs/media/film-poster.jpg" width="820" alt="Watch the Koinon film, 2 minutes 15. Recorded 18 Nov 2026 from the local app: two phones, a 60,000 F fund, the refusals, the member check, and the README limits. Regtest. The voice is a neural draft, not a person." /></a>
 </p>
 
-The public demo is one HTTPS origin on a Nigeria VPS: homepage, `/app`, `/v1`, and `/relay` on the same host. The spend rule runs on regtest, Bitcoin Core 32.1. It did not run on mainnet. The film is that demo, recorded locally. It is not a mainnet payment.
+The public demo is Docker Compose on a Nigeria VPS. Caddy serves the homepage, `/app`, `/v1`, and `/relay` on one HTTPS origin. The spend rule runs on regtest, Bitcoin Core 32.1. It did not run on mainnet. The film is that demo, recorded locally. It is not a mainnet payment.
 
 </div>
 
@@ -104,7 +104,7 @@ Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) should
 
 The CLI is still the proof that bitcoind refused one signature.
 
-**Five minutes, no Docker.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2.
+**Five minutes on this Mac, no Docker.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2. This is the 17 Nov script proof. The public site is the compose stack in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ```bash
 pnpm install
@@ -113,7 +113,7 @@ pnpm e2e
 
 You should see a checklist of `[x]` lines: 12 members, 2,541 sats locked, `PSBT_MISMATCH`, bitcoind's one-signature refusal, a confirmed spend, `REQUEST_EXPIRED`, `non-BIP68-final`, then a recovery after 10 blocks, then an audit that fails after one row is changed. The first lines say the rate is a fixture, not a market price.
 
-If Docker is missing, the script prints that and uses the host node. That is the run that exists. `docker compose up --build` is written in `infra/docker-compose.yml` and has not been executed here.
+If Docker is missing, the script prints that and uses the host node. That is the 17 Nov run on this Mac. GitHub Actions runs the same file with `docker compose -f infra/docker-compose.yml up -d --build` ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)). The public host is that file with `KOINON_SITE` set.
 
 **No bitcoind.** This does not move money. It does refuse a swapped recipient, and it adds no signature:
 
@@ -262,7 +262,7 @@ sequenceDiagram
 | The CFA amount is the one they approved | Sats and the rate are stored on the request | The euro input was a fixture of 60,000, or a test double of the same number. Not a live market price. |
 | A 5,000 F due is not eaten by the fee | At the 60,000 EUR fixture, 5,000 F is 12,705 sats. A P2WPKH→P2WSH landing is ~122 vbytes. At 2 sat/vB that is 244 sats, 96 F, paid by the member's wallet, not subtracted from the due. At 5 sat/vB, 240 F. | This is an association treasury, not a 500 F weekly tontine. A spend of one 2-of-3 input with change, at 2 sat/vB, is 600 sats (236 F) from `estimateVbytes(1, 2)` in `packages/core/src/coinselect.ts`. |
 
-Not claimed: mainnet, an audit, Lightning, Mobile Money, a spend a judge can broadcast from Vercel, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. Docker Compose has run only on GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764), all nine checks and the container log scan passed), not as a public host.
+Not claimed: mainnet, an audit, Lightning, Mobile Money, collusion protection, a public Nostr relay, or publisher authentication on the demo relay. A static file host has no `/v1` and no relay socket. Docker Compose is the public demo: Caddy on the HostAfrica VPS, one origin, checked 18 Nov 2026. The same file ran in GitHub Actions ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)): all nine checks and the container log scan passed. The bitcoind refusals in Evidence are `pnpm kill-test` and `pnpm e2e` on this Mac, where Docker was not installed.
 
 Review: none. No third party has read this. The severities in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) are the author's.
 
@@ -346,6 +346,7 @@ The signer re-derives the fund scripts from the xpubs stored on the device. A ch
 | Messages | `nostr-tools` 2.26.1, NIP-17 | The request is not a PSBT on the relay. |
 | Chain | Bitcoin Core 32.1, regtest | The refusal has to come from the node. |
 | Web | Vite 8, React 19, Tailwind 4 | The wallet UI. Keys, the P2WSH script, the PSBT check, and the signature stay in the browser. The member view checks the raw transaction with `@noble/curves`. |
+| Public host | Docker Compose, Caddy | One origin on the HostAfrica VPS: homepage, `/app`, `/v1`, `/relay`. Regtest. The script proof in Evidence did not use this stack. |
 | Package manager | pnpm 11.1.2 | Workspaces. There is no npm script runner beyond what pnpm exposes. |
 
 <a id="cli"></a>
@@ -386,7 +387,7 @@ You need a local regtest node for any command that moves or refuses a transactio
 | Node | 22, `.nvmrc` says `22` | `node -v` |
 | pnpm | 11.1.2 | `pnpm -v` |
 | Bitcoin Core | 32.1, the version this proof used | `bitcoind -version` |
-| Docker | not used in the run that exists | `docker compose version` |
+| Docker | Compose, for the public demo and for CI. The 17 Nov checklist on this Mac did not use it | `docker compose version` |
 
 ```bash
 pnpm install
@@ -402,23 +403,23 @@ With bitcoind installed as `bitcoind` on the path:
 pnpm e2e
 ```
 
-The first line, when Docker is absent, is `NOTE: docker compose is not installed.` The checklist follows. Regtest sats have no value. The rate line says the figure is a fixture.
+The first line, when Docker is absent, is `NOTE: docker compose is not installed.` The checklist follows. That is the host path on this Mac. Regtest sats have no value. The rate line says the figure is a fixture.
 
-The intended one-command stack, not executed on this machine:
+Local compose, the commands CI runs. Without `KOINON_SITE`, the web service is plain HTTP on `127.0.0.1:8000`.
 
 ```bash
-docker compose -f infra/docker-compose.yml up --build
+docker compose -f infra/docker-compose.yml up -d --build
 docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
 docker compose -f infra/docker-compose.yml down -v
 ```
 
-Compose publishes the coordinator on `127.0.0.1:8787` and the relay on `127.0.0.1:8080`. It does not publish Bitcoin RPC. A CLI command that mines or spends, once that stack exists, is:
+`down -v` deletes the chain and the keys. Compose publishes the coordinator on `127.0.0.1:8787` and the relay on `127.0.0.1:8080`. It does not publish Bitcoin RPC. A CLI command that mines or spends against that stack is:
 
 ```bash
 docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 ```
 
-<!-- TODO: verify the compose commands. They have not been run. -->
+The public host is the same file with `KOINON_SITE`, `KOINON_WEB_BIND`, and `KOINON_WEB_TLS_BIND` set, as [docs/DEPLOY.md](docs/DEPLOY.md). It is [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io).
 
 | Variable | Required | Example | What it does |
 | --- | --- | --- | --- |
@@ -436,7 +437,7 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | `KOINON_RELAY` | for requests | `ws://127.0.0.1:8080` | Gift-wrap relay. |
 | `LOG_LEVEL` | no | `info` | Coordinator logs. Bodies are redacted. |
 
-`FIXTURE_EUR` and `KOINON_RATE_SOURCE` belong to the demo price process. The coordinator does not read them. The full list is [.env.example](.env.example). None of these are browser-public variables. The frontend talks to `/v1` and `/relay` on the same origin; Vercel has neither.
+`FIXTURE_EUR` and `KOINON_RATE_SOURCE` belong to the demo price process. The coordinator does not read them. The full list is [.env.example](.env.example). None of these are browser-public variables. The frontend talks to `/v1` and `/relay` on the same origin. A static host has neither, which is why the demo is the compose stack.
 
 | Command | Covers |
 | --- | --- |
@@ -472,9 +473,9 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 | [packages/nostr](packages/nostr) | Message schemas, gift wrap, the demo relay. |
 | [apps/coordinator](apps/coordinator) | HTTP, chain scan, ledger, audit. |
 | [apps/cli](apps/cli) | Demo commands. |
-| [apps/web](apps/web) | Homepage and two-phone demo. Live on Vercel as static files. |
+| [apps/web](apps/web) | Homepage and two-phone demo. Caddy serves this build on the VPS. |
 | [scripts](scripts) | Regtest, kill test, seed, e2e, log scan. |
-| [infra](infra) | Compose file. Run in CI. Not a public host. |
+| [infra](infra) | Compose file and Caddy. The public host, and the GitHub Actions e2e job. |
 | [docs](docs) | Policy, API, threat model, UI contract, the run log. |
 
 <a id="status"></a>
@@ -535,13 +536,12 @@ docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 
 ## 13. Next
 
-1. Put the compose stack on one domain, as [docs/DEPLOY.md](docs/DEPLOY.md). Vercel cannot proxy `/v1` or the relay socket, and a passkey belongs to one domain.
-2. A real price response from mempool.space, shown next to the fixture so the two are not confused.
-3. `N` at about 4,320 blocks on a network where that wait means something. Not before the 10-block proof is boring.
-4. A third-party reading of the script. Then, and only then, a conversation about mainnet.
-5. Lightning stays out. A node that receives into a channel holds the coins on that node. The rule in this repo is a script that can hold an association's pot for months, where neither the treasurer nor the server can move it alone.
-6. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
-7. A Mobile Money bridge, including the kind of cash-in Banxaas does, stays out until the script is the thing a pilot trusts. The bridge would sit in front of the fund. It would not replace the two signatures.
+1. A real price response from mempool.space, shown next to the fixture so the two are not confused.
+2. `N` at about 4,320 blocks on a network where that wait means something. Not before the 10-block proof is boring.
+3. A third-party reading of the script. Then, and only then, a conversation about mainnet.
+4. Lightning stays out. A node that receives into a channel holds the coins on that node. The rule in this repo is a script that can hold an association's pot for months, where neither the treasurer nor the server can move it alone.
+5. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
+6. A Mobile Money bridge, including the kind of cash-in Banxaas does, stays out until the script is the thing a pilot trusts. The bridge would sit in front of the fund. It would not replace the two signatures.
 
 <div align="center">
 

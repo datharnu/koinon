@@ -3,7 +3,7 @@ import { PEOPLE } from "../lib/people";
 import { usePrefs, useT } from "../lib/prefs";
 import { Avatar, Chip } from "../ui/avatar";
 import { ButtonLink } from "../ui/button";
-import { IconArrowRight, IconCheck, IconClock, IconShield, IconX, Logo } from "../ui/icons";
+import { IconArrowRight, IconCheck, IconClock, IconX, Logo } from "../ui/icons";
 import { LangPill, LangToggle, ThemeToggle } from "../ui/toggles";
 import { REPO_URL, SiteFooter } from "../ui/site";
 
@@ -238,20 +238,7 @@ function HeroPhone() {
             <span aria-hidden className="hero-glare" />
           </div>
         </div>
-        <div className="hero-chip hero-chip-top">
-          <span className="grid size-7 place-items-center rounded-full bg-brand-soft text-brand">
-            <IconShield size={15} />
-          </span>
-          {t("2 signatures sur 3 pour dépenser", "2 of 3 signatures to spend")}
-        </div>
-        <div className="hero-chip hero-chip-bottom">
-          <span aria-hidden className="size-2 rounded-full bg-warn" />
-          {t("regtest · sats sans valeur", "regtest · sats with no value")}
-        </div>
       </div>
-      <figcaption className="mt-9 text-center text-[12.5px] leading-relaxed text-ink-3">
-        {t("Vrai écran de la démo, capturé le 18 nov. 2026.", "Real screen from the demo, captured 18 Nov 2026.")}
-      </figcaption>
     </figure>
   );
 }
