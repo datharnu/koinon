@@ -16,6 +16,19 @@ The phone is a wallet. It derives BIP39 keys on `m/48'/1'/0'/2'`, builds the P2W
 
 Francs on screen come from a rate. In every recorded run that rate was a fixture of 60,000 EUR, and the server said so. A missing rate is a refusal. 1,000 XOF locked at 2,541 sats. Those sats are regtest. They have no value.
 
+## Try it
+
+The running demo is [https://102-68-84-31.sslip.io/](https://102-68-84-31.sslip.io/) and [/app](https://102-68-84-31.sslip.io/app). The page, `/v1`, and `/relay` are one origin.
+
+To run that stack without installing Bitcoin Core:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build
+docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
+```
+
+Without `KOINON_SITE`, open http://127.0.0.1:8000. `docker compose -f infra/docker-compose.yml down -v` deletes the chain and the keys. The public host sets `KOINON_SITE`, as [DEPLOY.md](DEPLOY.md). The 17 Nov refusals were `pnpm e2e` on a Mac where Docker was not installed. Those txids are in the table below.
+
 ## How we built it
 
 ```text
@@ -79,6 +92,12 @@ Earlier the same day, and still in the README: one signature `NULLFAIL`; two sig
 4. Lightning stays out. A node that receives into a channel holds the coins. The point of this fund is that nobody holds the pot.
 5. An assistant stays out. It would talk about a spend. It would not be the thing that refuses one.
 6. A Mobile Money bridge, including a cash-in in front of the fund, waits until a pilot trusts the script. The bridge would not replace the two signatures.
+
+## Reach
+
+Zero associations use Koinon. That number stays zero.
+
+The pool, not a user count: more than 2,500 solidarity funds, more than 80,000 members, 95% women, 13 regions. Minister Alioune Dione, National Solidarity Fund day in Thiès, reported by APS on 19 Feb 2025. The APS page returned 404 when fetched on 18 Nov 2026. The same dispatch is on [Leral](https://www.leral.net/Plus-de-2-500-calebasses-de-solidarite-denombrees-a-travers-le-pays_a377683.html). Members pool a fund and make interest-free loans. This is not a census of tontines or GIEs, and it is not evidence that a treasurer stole.
 
 ## Pilot targets
 

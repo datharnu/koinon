@@ -54,7 +54,7 @@ The phone is a Bitcoin wallet. It derives BIP39 keys on `m/48'/1'/0'/2'`, builds
 
 | Devpost criterion | What to look at | Limit |
 | --- | --- | --- |
-| Usefulness and local impact | A dahira, a GIE, or a club whose treasurer can empty the Wave account today. The member link shows the pot in francs. | Zero associations are using it. The rows below are targets, not traction. |
+| Usefulness and local impact | A dahira, a GIE, or a club whose treasurer can empty the Wave account today. The member link shows the pot in francs. [Section 3](#who) cites more than 2,500 solidarity funds. | Zero associations are using it. The 2,500 is the minister's figure (APS, 19 Feb 2025), not a census and not a user count. The rows below are targets, not traction. |
 | Security by design | bitcoind refuses one signature. The officer's phone refuses a swapped recipient. The member's phone checks the witness. | Regtest. No audit. Two officers who agree can spend. |
 | UX and UI on a slow phone | `/` and `/fonds/:id` do not load the signing code. The measured times are in [Evidence](#evidence). | One headless Chromium on this Mac, not a handset and not the VPS. |
 | Working MVP | [Live demo](https://102-68-84-31.sslip.io/app), `pnpm e2e`, or Compose from [docs/DEPLOY.md](docs/DEPLOY.md). | Regtest faucet. Not mainnet. |
@@ -102,9 +102,18 @@ Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to
 
 Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) returned `{"ok":true,"network":"regtest","bitcoind":true,"demo":true}` on 18 Nov 2026.
 
-The recorded bitcoind refusals come from the scripts below, not from the live site.
+The recorded bitcoind refusals come from the Mac script below, not from the live site.
 
-**Five minutes on this Mac, no Docker.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2. This is the 17 Nov script proof. The public site is the compose stack in [docs/DEPLOY.md](docs/DEPLOY.md).
+**Run the stack without installing Bitcoin Core.** Docker Compose. GitHub Actions runs these commands ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)). Without `KOINON_SITE`, open http://127.0.0.1:8000. The public host sets `KOINON_SITE`, as [docs/DEPLOY.md](docs/DEPLOY.md).
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build
+docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
+```
+
+`docker compose -f infra/docker-compose.yml down -v` deletes the chain and the keys.
+
+**The 17 Nov script proof, on this Mac.** Bitcoin Core 32.1 on the path, Node 22, pnpm 11.1.2. Docker was not installed for this run.
 
 ```bash
 pnpm install
@@ -113,7 +122,7 @@ pnpm e2e
 
 You should see a checklist of `[x]` lines: 12 members, 2,541 sats locked, `PSBT_MISMATCH`, bitcoind's one-signature refusal, a confirmed spend, `REQUEST_EXPIRED`, `non-BIP68-final`, then a recovery after 10 blocks, then an audit that fails after one row is changed. The first lines say the rate is a fixture, not a market price.
 
-If Docker is missing, the script prints that and uses the host node. That is the 17 Nov run on this Mac. GitHub Actions runs the same file with `docker compose -f infra/docker-compose.yml up -d --build` ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)). The public host is that file with `KOINON_SITE` set.
+If Docker is missing, the script prints that and uses the host node. That is the 17 Nov run.
 
 **No bitcoind.** This does not move money. It does refuse a swapped recipient, and it adds no signature:
 
@@ -381,7 +390,7 @@ Roles are labels, not names: O1 treasurer, O2 secretary, O3 president, K assembl
 
 ## 10. Getting started
 
-You need a local regtest node for any command that moves or refuses a transaction. `pnpm test` and `pnpm tamper-test` do not need one.
+Compose is the path that does not need Bitcoin Core installed on the host. It is what CI runs, and what the public demo runs. `pnpm test` and `pnpm tamper-test` need neither Compose nor bitcoind. The 17 Nov refusals were `pnpm e2e` on this Mac, with bitcoind on the path.
 
 | Tool | Version | Check |
 | --- | --- | --- |
@@ -398,29 +407,34 @@ pnpm tamper-test
 
 `pnpm test` prints the vitest counts and does not start bitcoind. `pnpm tamper-test` prints the three lines in the demo section.
 
-With bitcoind installed as `bitcoind` on the path:
-
-```bash
-pnpm e2e
-```
-
-The first line, when Docker is absent, is `NOTE: docker compose is not installed.` The checklist follows. That is the host path on this Mac. Regtest sats have no value. The rate line says the figure is a fixture.
-
-Local compose, the commands CI runs. Without `KOINON_SITE`, the web service is plain HTTP on `127.0.0.1:8000`.
+Compose, the commands CI runs. Without `KOINON_SITE`, the web service is plain HTTP on `127.0.0.1:8000`.
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build
 docker compose -f infra/docker-compose.yml --profile e2e run --rm e2e
+```
+
+To reset, which deletes the chain and the keys:
+
+```bash
 docker compose -f infra/docker-compose.yml down -v
 ```
 
-`down -v` deletes the chain and the keys. Compose publishes the coordinator on `127.0.0.1:8787` and the relay on `127.0.0.1:8080`. It does not publish Bitcoin RPC. A CLI command that mines or spends against that stack is:
+Compose publishes the coordinator on `127.0.0.1:8787` and the relay on `127.0.0.1:8080`. It does not publish Bitcoin RPC. A CLI command that mines or spends against that stack is:
 
 ```bash
 docker compose -f infra/docker-compose.yml --profile tools run --rm cli status
 ```
 
 The public host is the same file with `KOINON_SITE`, `KOINON_WEB_BIND`, and `KOINON_WEB_TLS_BIND` set, as [docs/DEPLOY.md](docs/DEPLOY.md). It is [102-68-84-31.sslip.io](https://102-68-84-31.sslip.io).
+
+With bitcoind installed as `bitcoind` on the path, the 17 Nov proof:
+
+```bash
+pnpm e2e
+```
+
+The first line, when Docker is absent, is `NOTE: docker compose is not installed.` The checklist follows. That is the host path on this Mac. Regtest sats have no value. The rate line says the figure is a fixture.
 
 | Variable | Required | Example | What it does |
 | --- | --- | --- | --- |
