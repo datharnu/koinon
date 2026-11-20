@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LedgerEntry } from "../lib/http";
 import { sats, xof } from "../lib/format";
 import { memberTone } from "../lib/people";
@@ -18,11 +18,20 @@ function ordered(entries: LedgerEntry[]): LedgerEntry[] {
   return [...entries].sort((a, b) => a.confirmations - b.confirmations || b.seen_at.localeCompare(a.seen_at));
 }
 
-export function ActivityList({ fundId, limit, emptyAction }: { fundId: string; limit?: number; emptyAction?: ReactNode }) {
+/** `openTxid` opens that transaction's proof once it is in the ledger: the receipt link from an officer's phone. */
+export function ActivityList({ fundId, limit, emptyAction, openTxid }: { fundId: string; limit?: number; emptyAction?: ReactNode; openTxid?: string }) {
   const { t } = usePrefs();
   const ledger = useLedger(fundId);
   const members = useMembers(fundId);
   const [selected, setSelected] = useState<LedgerEntry | null>(null);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!openTxid || opened.current || !ledger.data) return;
+    const entry = ledger.data.entries.find((item) => item.txid === openTxid && item.kind === "spend");
+    if (!entry) return;
+    opened.current = true;
+    setSelected(entry);
+  }, [openTxid, ledger.data]);
   if (ledger.isPending) {
     return (
       <Group className="flex flex-col gap-3 p-4">

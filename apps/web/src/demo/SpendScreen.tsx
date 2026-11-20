@@ -12,12 +12,13 @@ import { Sheet } from "../ui/sheet";
 import { useToast } from "../ui/toast";
 import { useDemo } from "./context";
 import { useFund } from "./hooks";
+import { HALL_XOF, hallPurpose } from "./script";
 import { Group, IconBubble, Row, ScreenHeader, StickyFooter, useNav } from "./ui";
 
 const PURPOSE_MAX = 140;
 const MIN_XOF = 100;
 const MAX_XOF = 5_000_000;
-const PRESETS = [5_000, 15_000, 25_000];
+const PRESETS = [5_000, HALL_XOF, 25_000];
 
 export function SpendScreen({ role }: { role: OfficerRole }) {
   const { t, lang } = usePrefs();
@@ -27,10 +28,10 @@ export function SpendScreen({ role }: { role: OfficerRole }) {
   const client = useQueryClient();
   const fund = useFund(demo.config.fundId);
   const rate = useQuery({ queryKey: ["rate"], queryFn: endpoints.rate, refetchInterval: 15_000 });
-  const [digits, setDigits] = useState("15000");
+  const [digits, setDigits] = useState(String(HALL_XOF));
   const [recipient, setRecipient] = useState(demo.config.vendorAddress);
   const [editing, setEditing] = useState(false);
-  const [purpose, setPurpose] = useState(t("Location de la salle pour l'assemblée générale", "Hall rental for the general assembly"));
+  const [purpose, setPurpose] = useState(hallPurpose(t));
   const [busy, setBusy] = useState<string | false>(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -102,8 +103,8 @@ export function SpendScreen({ role }: { role: OfficerRole }) {
           <h2 className="text-[24px] font-bold">{t("Demande envoyée", "Request sent")}</h2>
           <p className="text-[15px] leading-snug text-ink-2">
             {t(
-              `${xof(value, lang)} pour « ${purpose.trim()} ». Votre signature est posée ; ${cosigners.join(" ou ")} doit signer pour que l'argent parte.`,
-              `${xof(value, lang)} for "${purpose.trim()}". Your signature is in; ${cosigners.join(" or ")} must sign before any money moves.`,
+              `${xof(value, lang)} pour « ${purpose.trim()} ». 1 approbation sur 2. Aucun argent n'a bougé : ${cosigners.join(" ou ")} doit encore signer.`,
+              `${xof(value, lang)} for "${purpose.trim()}". 1 of 2 approvals. No money has moved: ${cosigners.join(" or ")} still has to sign.`,
             )}
           </p>
         </div>

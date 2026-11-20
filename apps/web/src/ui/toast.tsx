@@ -29,7 +29,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const push = useCallback(
     (toast: Omit<Toast, "id">) => {
       const id = Date.now() + Math.random();
-      setToasts((list) => [{ ...toast, id }, ...list].slice(0, 3));
+      // Toasts sit over the top of both phones on the wide stage; more than one hides the amount.
+      setToasts([{ ...toast, id }]);
       timers.current.set(id, window.setTimeout(() => dismiss(id), toast.detail ? 9000 : 4500));
     },
     [dismiss],

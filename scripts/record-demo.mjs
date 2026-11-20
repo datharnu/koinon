@@ -222,7 +222,7 @@ const appTake = take("app", DESKTOP, async (page, mark, context) => {
   await send.waitFor({ timeout: 60_000 });
   await pause(page, 1000);
   await tap(page, send);
-  await page.getByText("Sent. It confirms with the next block.", { exact: true }).filter({ visible: true }).first().waitFor({ timeout: 60_000 });
+  await page.getByText("Sent. Waiting for a block, not confirmed yet.", { exact: true }).filter({ visible: true }).first().waitFor({ timeout: 60_000 });
   mark("broadcast");
   await pause(page, 1200);
   await closeToasts(page);

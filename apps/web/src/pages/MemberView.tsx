@@ -52,6 +52,7 @@ function MemberApp({ fundId }: { fundId: string }) {
   const { t, lang } = usePrefs();
   const fund = useFund(fundId);
   const matched = fund.data ? fingerprintStatus(fund.data, window.location.hash.replace(/^#/, "")) === "match" : false;
+  const receipt = new URLSearchParams(window.location.search).get("tx") ?? undefined;
 
   useEffect(() => {
     document.title = fund.data ? `${fund.data.name} · Koinon` : "Koinon";
@@ -104,7 +105,7 @@ function MemberApp({ fundId }: { fundId: string }) {
         {fund.data ? (
           <section>
             <SectionTitle>{t("Activité", "Activity")}</SectionTitle>
-            <ActivityList fundId={fundId} />
+            <ActivityList fundId={fundId} openTxid={receipt && /^[0-9a-f]{64}$/i.test(receipt) ? receipt : undefined} />
           </section>
         ) : null}
       </div>

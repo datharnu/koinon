@@ -1,18 +1,21 @@
 import { useId, useState } from "react";
 import type { RequestView } from "../lib/api";
-import { broadcast, errorCode, errorMessage, rejectSpend, signSpend, type OfficerRole } from "../lib/flows";
+import { broadcast, errorCode, errorMessage, rejectSpend, signSpend, spendAlone, type OfficerRole } from "../lib/flows";
 import { clock, middle, relative, sats, xof } from "../lib/format";
+import { memberLink } from "../lib/link";
 import { PEOPLE, roleTitle } from "../lib/people";
 import { usePrefs } from "../lib/prefs";
 import { Avatar } from "../ui/avatar";
-import { Button } from "../ui/button";
-import { IconAlert, IconCheck, IconClock, IconCopy, IconShield, IconStore } from "../ui/icons";
+import { Button, ButtonLink } from "../ui/button";
+import { IconAlert, IconArrowRight, IconCheck, IconClock, IconCopy, IconCube, IconEye, IconShield, IconStore } from "../ui/icons";
 import { Sheet } from "../ui/sheet";
 import { ErrorState, Skeleton } from "../ui/states";
 import { useToast } from "../ui/toast";
 import { useDemo } from "./context";
 import { useOfficerRequests, useRefresh, useRequest } from "./hooks";
+import { nodeVerdict, useNetwork, VerdictView, type Verdict } from "./Network";
 import { StatusChip } from "./RequestStatus";
+import { useStage } from "./stage";
 import { Group, Note, Row, ScreenHeader, SectionTitle, StickyFooter, useNav } from "./ui";
 
 interface Failure {
@@ -53,8 +56,12 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
   const toast = useToast();
   const refresh = useRefresh();
   const { entries } = useOfficerRequests(role);
+  const stage = useStage();
+  const network = useNetwork();
   const [busy, setBusy] = useState<string | false>(false);
   const [failure, setFailure] = useState<Failure | null>(null);
+  const [solo, setSolo] = useState<Verdict | null>(null);
+  const [soloBusy, setSoloBusy] = useState(false);
 
   const item = entries.find((entry) => entry.item.requestId === request.id)?.item;
   const read = item?.message;
@@ -130,6 +137,81 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
     void navigator.clipboard?.writeText(text).then(() => toast({ tone: "info", title: t("Copié", "Copied") }));
   };
 
+  /** The same request, sent to Bitcoin Core with this officer's signature only. */
+  const trySolo = async () => {
+    setSoloBusy(true);
+    setSolo(null);
+    try {
+      const secret = demo.secrets[role];
+      if (!secret) throw new Error("NO_KEY");
+      const answer = await spendAlone({ config: demo.config, role, secret, request });
+      setSolo({
+        ...nodeVerdict(
+          answer,
+          t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."),
+          t("Bitcoin Core a accepté la transaction.", "Bitcoin Core accepted the transaction."),
+        ),
+        about: answer.kind === "refused" ? t("Cette demande est intacte : 1 approbation sur 2, aucun argent n'a bougé.", "This request is unchanged: 1 of 2 approvals, no money has moved.") : undefined,
+      });
+    } catch (error) {
+      setSolo({ kind: "error", title: t("Pas de réponse claire", "No clear answer"), detail: `${errorCode(error)} · ${errorMessage(error)}` });
+    } finally {
+      setSoloBusy(false);
+      await refresh(request.id);
+    }
+  };
+
+  const partner: OfficerRole = role === "O1" ? "O2" : "O1";
+  const waitingOnOne = open && signed && signedBy.size === 1;
+  const canHandOff = Boolean(stage) && waitingOnOne && !signedBy.has(partner);
+  const next = waitingOnOne ? (
+    <section aria-label={t("Étape suivante", "Next step")} className="rounded-[22px] bg-card p-4">
+      <h3 className="text-[13px] font-semibold text-ink-2">{t("Étape suivante", "Next step")}</h3>
+      {solo ? (
+        <VerdictView verdict={solo} />
+      ) : (
+        <p className="mt-1 text-[13.5px] leading-snug text-ink-2">
+          {t(
+            `D'abord, essayez de payer avec la seule signature de ${PEOPLE[role].first}. Bitcoin Core doit refuser.`,
+            `First, try to pay with only ${PEOPLE[role].first}'s signature. Bitcoin Core should refuse.`,
+          )}
+        </p>
+      )}
+      <div className="mt-3 flex flex-col gap-2">
+        {solo && canHandOff && stage ? (
+          <Button block onClick={() => stage.handTo(partner, request.id)} icon={<IconArrowRight size={17} />}>
+            {stage.together ? t(`Approuver chez ${PEOPLE[partner].first}`, `Approve on ${PEOPLE[partner].first}'s phone`) : t(`Passer à ${PEOPLE[partner].first} pour approuver`, `Switch to ${PEOPLE[partner].first} to approve`)}
+          </Button>
+        ) : null}
+        <Button
+          block
+          variant={solo ? "secondary" : "dark"}
+          className={solo ? "bg-surface hover:bg-card-2" : ""}
+          onClick={() => void trySolo()}
+          busy={soloBusy ? t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…") : false}
+        >
+          {solo ? t("Réessayer avec une seule signature", "Try one signature again") : t(`Envoyer avec la seule signature de ${PEOPLE[role].first}`, `Send with only ${PEOPLE[role].first}'s signature`)}
+        </Button>
+        {!solo && canHandOff && stage ? (
+          <Button block variant="ghost" onClick={() => stage.handTo(partner, request.id)}>
+            {t(`Passer directement à ${PEOPLE[partner].first}`, `Skip to ${PEOPLE[partner].first}`)}
+          </Button>
+        ) : null}
+      </div>
+    </section>
+  ) : null;
+
+  const settle =
+    request.status === "broadcast" ? (
+      <Button block variant="dark" icon={<IconCube size={17} />} onClick={() => void network.mineBlocks(1)} busy={network.busy === "mine" ? t("Minage…", "Mining…") : false} disabled={network.busy !== null}>
+        {t("Miner un bloc pour confirmer (réseau de test)", "Mine a block to confirm (test network)")}
+      </Button>
+    ) : request.status === "confirmed" && request.broadcast_txid ? (
+      <ButtonLink external href={memberLink(demo.config, window.location.origin, request.broadcast_txid)} variant="soft" className="w-full" icon={<IconEye size={17} />}>
+        {t("Ouvrir le reçu du membre", "Open the member receipt")}
+      </ButtonLink>
+    ) : null;
+
   const footer = (() => {
     if (open && !signed && read) {
       return (
@@ -164,17 +246,37 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
     return null;
   })();
 
+  const count = Math.min(signedBy.size, 2);
   const statusNote = (() => {
     if (open && signed) {
       const waiting = (["O1", "O2", "O3"] as const).filter((officer) => !signedBy.has(officer)).map((officer) => PEOPLE[officer].first);
       return (
         <Note icon={<IconClock size={16} />}>
-          {t(`Votre signature est posée. ${waiting.join(" ou ")} doit encore signer.`, `Your signature is in. ${waiting.join(" or ")} still has to sign.`)}
+          <strong className="font-semibold text-ink">{t(`${count} approbation sur 2. Aucun argent n'a bougé.`, `${count} of 2 approvals. No money has moved.`)}</strong>{" "}
+          {t(`${waiting.join(" ou ")} doit encore signer.`, `${waiting.join(" or ")} still has to sign.`)}
         </Note>
       );
     }
     if (open && !read && !signed) return <Note icon={<IconClock size={16} />}>{t("Le message chiffré n'est pas encore arrivé sur ce téléphone.", "The encrypted message has not reached this phone yet.")}</Note>;
-    if (request.status === "broadcast") return <Note tone="warn" icon={<IconClock size={16} />}>{t("Envoyée. Elle sera confirmée au prochain bloc.", "Sent. It confirms with the next block.")}</Note>;
+    if (open && read && !signed) {
+      return (
+        <Note icon={<IconShield size={16} />}>
+          <strong className="font-semibold text-ink">{t(`${count} approbation sur 2. Aucun argent n'a bougé.`, `${count} of 2 approvals. No money has moved.`)}</strong>{" "}
+          {count === 1
+            ? t("La vôtre serait la deuxième. Relisez le montant, le destinataire et l'objet.", "Yours would be the second. Check the amount, the recipient and the purpose.")
+            : t("Relisez le montant, le destinataire et l'objet.", "Check the amount, the recipient and the purpose.")}
+        </Note>
+      );
+    }
+    if (request.status === "approved") {
+      return (
+        <Note icon={<IconCheck size={16} />}>
+          <strong className="font-semibold text-ink">{t("2 approbations sur 2.", "2 of 2 approvals.")}</strong>{" "}
+          {t("Aucun argent n'a encore bougé : envoyez la transaction pour payer.", "No money has moved yet: send the transaction to pay.")}
+        </Note>
+      );
+    }
+    if (request.status === "broadcast") return <Note tone="warn" icon={<IconClock size={16} />}>{t("Envoyée. En attente d'un bloc, pas encore confirmée.", "Sent. Waiting for a block, not confirmed yet.")}</Note>;
     if (request.status === "confirmed") return <Note tone="good" icon={<IconCheck size={16} />}>{t("Payée. La transaction est dans un bloc.", "Paid. The transaction is in a block.")}</Note>;
     if (request.status === "rejected") return <Note tone="bad" icon={<IconAlert size={16} />}>{t("Refusée par un membre du bureau. Rien n'est parti.", "Rejected by an officer. Nothing was sent.")}</Note>;
     if (request.status === "expired") return <Note icon={<IconClock size={16} />}>{t("Expirée sans deuxième signature. Rien n'est parti.", "Expired without a second signature. Nothing was sent.")}</Note>;
@@ -211,7 +313,13 @@ function Detail({ role, request }: { role: OfficerRole; request: RequestView }) 
               </div>
             </div>
           ) : null}
-          {statusNote}
+          {statusNote || settle ? (
+            <div className="flex flex-col gap-2">
+              {statusNote}
+              {settle}
+            </div>
+          ) : null}
+          {next}
 
           <Group>
             <Row

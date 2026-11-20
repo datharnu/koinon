@@ -9,11 +9,13 @@ export function memberLink(
     assembly: { xpub: string };
   },
   origin = window.location.origin,
+  txid?: string,
 ): string {
   const hash = constitutionHash({
     officers: [config.officers.O1.xpub, config.officers.O2.xpub, config.officers.O3.xpub],
     assembly: config.assembly.xpub,
     csvBlocks: config.csvBlocks,
   });
-  return `${origin}/fonds/${config.fundId}#${hash}`;
+  const receipt = txid ? `?tx=${txid}` : "";
+  return `${origin}/fonds/${config.fundId}${receipt}#${hash}`;
 }

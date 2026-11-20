@@ -12,6 +12,7 @@ import { Sheet } from "../ui/sheet";
 import { useToast } from "../ui/toast";
 import { secretFor, useDemo } from "./context";
 import { useFund } from "./hooks";
+import { HALL_XOF, hallPurpose } from "./script";
 import { Note, ScreenHeader, useNav } from "./ui";
 
 function useInvalidate() {
@@ -139,15 +140,24 @@ export function CheatSheet({ open, onClose }: { open: boolean; onClose: () => vo
   );
 }
 
-type Verdict =
-  | { kind: "blocked"; title: string; detail?: string; next?: "mine-and-retry" }
+/** `about` names the expense the attack ran on, so the judge can follow it to the receipt. */
+export type Verdict =
+  | { kind: "blocked"; title: string; detail?: string; about?: string; next?: "mine-and-retry" }
   /** The legitimate path went through, as the policy intends. */
-  | { kind: "intended"; title: string; detail?: string }
-  | { kind: "allowed"; title: string; detail?: string }
-  | { kind: "error"; title: string; detail: string };
+  | { kind: "intended"; title: string; detail?: string; about?: string }
+  | { kind: "allowed"; title: string; detail?: string; about?: string }
+  | { kind: "error"; title: string; detail: string; about?: string };
+
+/** What the attack left behind: the same request, still one approval short. */
+export function unchangedNote(request: RequestView, t: (fr: string, en: string) => string, lang: "fr" | "en"): string {
+  return t(
+    `Sur la demande ${xof(request.amount_xof, lang)} « ${request.purpose} ». Elle est intacte : 1 approbation sur 2, aucun argent n'a bougé.`,
+    `On the ${xof(request.amount_xof, lang)} request "${request.purpose}". It is unchanged: 1 of 2 approvals, no money has moved.`,
+  );
+}
 
 function CheatList() {
-  const { t } = usePrefs();
+  const { t, lang } = usePrefs();
   const demo = useDemo();
   const toast = useToast();
   const invalidate = useInvalidate();
@@ -183,40 +193,46 @@ function CheatList() {
     invalidate();
   };
 
-  /** A pending request the treasurer opened and signed, or a fresh one. */
-  const treasurerRequest = async (progress: (label: string) => void): Promise<{ request: RequestView; fresh: boolean }> => {
+  /**
+   * Ibou's newest request that only he has signed. Without one, open the walkthrough's hall rental,
+   * the same one Spend offers, so the attack and the approval are one expense.
+   */
+  const treasurerRequest = async (progress: (label: string) => void): Promise<RequestView> => {
     for (const id of myRequests("O1")) {
       const request = await endpoints.request(id);
-      if (request.status === "pending" && request.approvals.length === 1 && request.approvals[0]?.officer === "O1") return { request, fresh: false };
+      if (request.status === "pending" && request.approvals.length === 1 && request.approvals[0]?.officer === "O1") return request;
     }
-    progress(t("Ibou ouvre une dépense…", "Ibou opens a spend…"));
-    const purpose = t("Achat de chaises (test d'attaque)", "Buying chairs (attack test)");
-    const created = await openSpend({ config: demo.config, role: "O1", secret: secretFor(demo.secrets, "O1"), amountXof: 10_000, recipient: demo.config.vendorAddress, purpose });
+    progress(t("Ibou demande la location de la salle…", "Ibou requests the hall rental…"));
+    const purpose = hallPurpose(t);
+    const created = await openSpend({ config: demo.config, role: "O1", secret: secretFor(demo.secrets, "O1"), amountXof: HALL_XOF, recipient: demo.config.vendorAddress, purpose });
     await signSpend({
       config: demo.config,
       role: "O1",
       secret: secretFor(demo.secrets, "O1"),
       requester: "O1",
-      read: { request_id: created.id, amount_xof: 10_000, amount_sats: created.amount_sats, recipient: demo.config.vendorAddress, purpose, expires_at: created.expires_at, path: "A" },
+      read: { request_id: created.id, amount_xof: HALL_XOF, amount_sats: created.amount_sats, recipient: demo.config.vendorAddress, purpose, expires_at: created.expires_at, path: "A" },
     });
-    return { request: await endpoints.request(created.id), fresh: true };
+    return endpoints.request(created.id);
   };
 
   const alone = () =>
     attempt("alone", t("Préparation…", "Preparing…"), async (progress) => {
-      const { request } = await treasurerRequest(progress);
+      const request = await treasurerRequest(progress);
       progress(t("Envoi à Bitcoin Core…", "Sending to Bitcoin Core…"));
       const answer = await spendAlone({ config: demo.config, role: "O1", secret: secretFor(demo.secrets, "O1"), request });
-      return nodeVerdict(
-        answer,
-        t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."),
-        t("Bitcoin Core a accepté la transaction.", "Bitcoin Core accepted the transaction."),
-      );
+      return {
+        ...nodeVerdict(
+          answer,
+          t("Bitcoin Core refuse une transaction avec une seule signature.", "Bitcoin Core refuses a transaction with one signature."),
+          t("Bitcoin Core a accepté la transaction.", "Bitcoin Core accepted the transaction."),
+        ),
+        about: answer.kind === "refused" ? unchangedNote(request, t, lang) : undefined,
+      };
     });
 
   const swap = () =>
     attempt("swap", t("Préparation…", "Preparing…"), async (progress) => {
-      const { request } = await treasurerRequest(progress);
+      const request = await treasurerRequest(progress);
       progress(t("Le serveur change le destinataire…", "The server swaps the recipient…"));
       // Same fields as Coumba's gift wrap: the treasurer typed them and this browser sent them.
       const decision = await signSpend({
@@ -228,7 +244,12 @@ function CheatList() {
         read: { request_id: request.id, amount_xof: Number(request.amount_xof), amount_sats: request.amount_sats, recipient: request.recipient, purpose: request.purpose, expires_at: request.expires_at, path: "A" },
       });
       if (decision.kind === "refused")
-        return { kind: "blocked", title: t("Le téléphone de Coumba refuse de signer : la transaction ne paie pas le destinataire de la demande.", "Coumba's phone refuses to sign: the transaction does not pay the requested recipient."), detail: decision.code };
+        return {
+          kind: "blocked",
+          title: t("Le téléphone de Coumba refuse de signer : la transaction ne paie pas le destinataire de la demande.", "Coumba's phone refuses to sign: the transaction does not pay the requested recipient."),
+          detail: decision.code,
+          about: unchangedNote(request, t, lang),
+        };
       if (decision.kind === "signed") return { kind: "allowed", title: t("Coumba a signé une transaction modifiée.", "Coumba signed a modified transaction.") };
       return { kind: "error", title: t("Demande ignorée", "Request ignored"), detail: decision.reason };
     });
@@ -326,7 +347,7 @@ function CheatList() {
   );
 }
 
-function VerdictView({ verdict }: { verdict: Verdict }) {
+export function VerdictView({ verdict }: { verdict: Verdict }) {
   const { t } = usePrefs();
   const [open, setOpen] = useState(false);
   const good = verdict.kind === "blocked" || verdict.kind === "intended";
@@ -338,6 +359,7 @@ function VerdictView({ verdict }: { verdict: Verdict }) {
         {label}
       </p>
       <p className="mt-0.5 text-[13px] leading-snug text-ink">{verdict.title}</p>
+      {verdict.about ? <p className="mt-1 break-words text-[12.5px] leading-snug text-ink-2">{verdict.about}</p> : null}
       {verdict.detail ? (
         <>
           <button type="button" onClick={() => setOpen(!open)} className="mt-1 text-[12.5px] font-semibold underline-offset-2 hover:underline">
@@ -350,7 +372,7 @@ function VerdictView({ verdict }: { verdict: Verdict }) {
   );
 }
 
-function nodeVerdict(answer: NodeAnswer, refusedTitle: string, acceptedTitle: string): Verdict {
+export function nodeVerdict(answer: NodeAnswer, refusedTitle: string, acceptedTitle: string): Verdict {
   if (answer.kind === "refused") return { kind: "blocked", title: refusedTitle, detail: answer.message };
   return { kind: "allowed", title: acceptedTitle, detail: answer.txid };
 }

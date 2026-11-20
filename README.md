@@ -79,10 +79,10 @@ The film is [Watch the film (2:15)](docs/media/koinon-demo.mp4). It was recorded
 
 The homepage says "Nobody empties the fund alone." Main button: "Try the demo."
 
-- Ibou taps Sign and send on 15,000 F. Coumba sees recipient, amount, and locked rate, then Approve. After one block: "Paid. The transaction is in a block."
+- One expense, start to finish: Ibou asks for 15,000 F for the hall rental. The request reads "1 of 2 approvals. No money has moved." He tries to pay with only his signature and Bitcoin Core refuses. "Switch to Coumba to approve" hands her the same request; she sees recipient, amount, and locked rate, then Approve. "Mine a block to confirm (test network)" sits beside the pending payment. After it: "Paid. The transaction is in a block." and "Open the member receipt".
 - A swapped payee stops before signing: `PSBT_MISMATCH`, "the transaction does not pay the requested recipient."
 - Invite link for WhatsApp. No account and no key. The sheet says "Checked on this phone from Bitcoin bytes, not from the server's database," and names Ibou + Coumba only when the link fingerprint matches.
-- French and English switch in the header. Playwright passed at 390×844 (39.2s) and 360×740 (39.8s), headless Chromium on this Mac, not a handset.
+- French and English switch in the header. Playwright passed at 390×844 (33.3s) and 360×740 (33.4s) on 20 Nov 2026, headless Chromium on this Mac, not a handset.
 - Signing code loads only on `/app` (372,751 bytes). `/` is 109,610 bytes, `/fonds/:id` 142,007, unknown fund. One headless run on the current build, 18 Nov 2026.
 
 Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
@@ -103,6 +103,17 @@ Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to
 Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) returned `{"ok":true,"network":"regtest","bitcoind":true,"demo":true}` on 18 Nov 2026.
 
 The recorded bitcoind refusals come from the Mac script below, not from the live site.
+
+**The walkthrough, hosted and local, side by side.** One 15,000 F hall rental carries every step.
+
+| Step | What you do | What you should see | Local, 20 Nov 2026 | Hosted |
+| --- | --- | --- | --- | --- |
+| 1 signature | Ibou: Spend, Review, Sign and send, View the request, then "Send with only Ibou's signature" | "1 of 2 approvals. No money has moved." then Blocked; See the raw answer shows `NULLFAIL` / `Signature must be zero`; "This request is unchanged" | Passed | Not yet run on this build |
+| Changed payee | Test network, "The server swaps the recipient" | `PSBT_MISMATCH`, naming the same 15,000 F hall rental, unchanged | Passed | Not yet run on this build |
+| 2 signatures | "Switch to Coumba to approve", Approve, Send the transaction, "Mine a block to confirm (test network)" | "2 of 2 approvals.", then "Sent. Waiting for a block, not confirmed yet.", then "Paid. The transaction is in a block." | Passed | Not yet run on this build |
+| Member receipt | "Open the member receipt" | The proof opens by itself: "Checked on this phone from Bitcoin bytes", Ibou + Coumba, P2WSH 2-of-3 + CSV; "Keys match this link" | Passed | Not yet run on this build |
+
+Local is `pnpm ui-walk` (Playwright, headless Chromium on this Mac, native regtest, Vite dev server): 390×844 passed in 33.3s and 360×740 in 33.4s. The hosted site still serves the 18 Nov build until it is rebuilt; the hosted column is filled from a fresh run after that, with its txids.
 
 **Run the stack without installing Bitcoin Core.** Docker Compose. GitHub Actions runs these commands ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)). Without `KOINON_SITE`, open http://127.0.0.1:8000. The public host sets `KOINON_SITE`, as [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -293,7 +304,7 @@ Recorded 17 Nov 2026 on this machine. Bitcoin Core 32.1. Long output is in [docs
 | `pnpm cli-demo` | The officer path, a veto, and recovery. Recovery tx `6c1ccaa39387ef08ccdfcdd1547fd4c877594e430b23db9d21d3d4d298ab68f7`. |
 | `pnpm e2e` | Re-run the same day, host bitcoind, Docker not installed. 10 checks passed. The tenth is the log line on this Mac. CI's nine checks are that list without the log line. CI scans container logs as a separate step. 1,000 XOF locked at 2,541 sats. Spend tx `cccd0cc38c17c5ff889f9e58402c04f492cfca8827dd2fe3d46a618b13651bbd`. Recovery tx `5a6995f9f959071643c74e1820b68d812841621bba8e5623a30b99174c1a37bf`. An earlier run the same day: spend `ccc8f9dd877540679e3db141754cb374a65c71416e12e8c25863fd0a0acc2865`, recovery `7f50d10e467ee5ccb5342c6de9cbb863c9a817d410cb7a39ee448ef150037cc1`. |
 | `pnpm test` | Current: core 30, coordinator 11, nostr 2. They do not start bitcoind. Earlier the same day: core 22, coordinator 2, nostr 2. At the script proof: 7. |
-| `pnpm ui-walk` | Playwright, one worker, against `http://localhost:5173` and the host coordinator. 390×844 passed in 39.2s. 360×740 passed in 39.8s. 2 passed. The fund was created with an 8-digit code. |
+| `pnpm ui-walk` | Playwright, one worker, against `http://localhost:5173` and the host coordinator. 20 Nov 2026, one 15,000 F hall rental from the one-signature refusal to the member receipt: 390×844 passed in 33.3s, 360×740 in 33.4s. The first run that day failed in the test itself (two Close buttons on the proof sheet), not the app. On 17 Nov the older walkthrough passed in 39.2s and 39.8s. The fund was created with an 8-digit code. |
 
 `pnpm test` earlier the same day, at the script proof, was 7. That count is kept in [docs/POLICY.md](docs/POLICY.md). The later count does not erase it.
 

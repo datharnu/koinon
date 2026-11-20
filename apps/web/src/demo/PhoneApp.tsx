@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { OfficerRole } from "../lib/flows";
 import { usePrefs } from "../lib/prefs";
 import { IconGear, IconHome, IconInbox } from "../ui/icons";
@@ -9,6 +9,7 @@ import { RequestScreen } from "./RequestScreen";
 import { RequestsScreen } from "./RequestsScreen";
 import { SettingsScreen, MembersScreen, ActivityScreen } from "./SettingsScreen";
 import { SpendScreen } from "./SpendScreen";
+import { useStage } from "./stage";
 import { NavContext, type Route, type Tab } from "./ui";
 
 /** One officer's phone: tab roots with a bottom bar, pushed screens without it. */
@@ -20,6 +21,13 @@ export function PhoneApp({ role, initial = "home" }: { role: OfficerRole; initia
   const back = useCallback(() => setStack((current) => (current.length > 1 ? current.slice(0, -1) : current)), []);
   const tab = useCallback((next: Tab) => setStack([{ name: next }]), []);
   const nav = useMemo(() => ({ push, back, tab, sheet: setSheet }), [push, back, tab]);
+
+  const focus = useStage()?.focus;
+  useEffect(() => {
+    if (!focus || focus.role !== role) return;
+    setSheet(null);
+    setStack([{ name: "requests" }, { name: "request", id: focus.requestId }]);
+  }, [focus, role]);
 
   const route = stack[stack.length - 1] ?? { name: "home" };
   const root = stack.length === 1;

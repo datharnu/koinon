@@ -1,12 +1,13 @@
 import "../polyfills";
 import type { Role } from "@koinon/core";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { DemoProvider } from "../demo/context";
 import { useOfficerRequests } from "../demo/hooks";
 import { CheatSheet, FloatingToolbar, NetworkSheet } from "../demo/Network";
 import { PhoneApp } from "../demo/PhoneApp";
+import { StageContext, type Focus } from "../demo/stage";
 import { Note, ScreenHeader, StickyFooter } from "../demo/ui";
 import { endpoints } from "../lib/api";
 import { createDemoFund, errorCode, type OfficerRole, type SetupStep } from "../lib/flows";
@@ -453,9 +454,11 @@ function OfficerPendingDot({ role }: { role: OfficerRole }) {
 function DemoPath() {
   const { t } = usePrefs();
   const steps = [
-    [t("Ibou demande", "Ibou asks"), t("Dépenser", "Spend")],
+    [t("Ibou demande 15 000 F", "Ibou asks 15,000 F"), t("Dépenser", "Spend")],
+    [t("1 signature : refus", "1 signature: refused"), t("la demande", "the request")],
     [t("Coumba approuve", "Coumba approves"), t("Demandes", "Requests")],
-    [t("Un membre vérifie", "A member checks"), t("Inviter", "Invite")],
+    [t("Un bloc confirme", "A block confirms"), t("Miner", "Mine")],
+    [t("Un membre vérifie", "A member checks"), t("Reçu", "Receipt")],
   ] as const;
   return (
     <ol aria-label={t("Le parcours", "The walkthrough")} className="flex items-center gap-1 rounded-full bg-surface/70 p-1 ring-1 ring-line">
@@ -479,6 +482,12 @@ function Stage() {
   const [cheat, setCheat] = useState(false);
   const [network, setNetwork] = useState(false);
   const [holder, setHolder] = useState<OfficerRole>("O1");
+  const [focus, setFocus] = useState<Focus | null>(null);
+  const handTo = useCallback((role: OfficerRole, requestId: string) => {
+    setHolder(role);
+    setFocus((current) => ({ role, requestId, nonce: (current?.nonce ?? 0) + 1 }));
+  }, []);
+  const stage = useMemo(() => ({ together: wide, handTo, focus }), [wide, handTo, focus]);
 
   const switcher = (inset = false) => (
     <div role="tablist" aria-label={t("Qui tient le téléphone", "Who holds the phone")} className={inset ? "flex h-9 min-w-0 flex-1 items-center gap-0.5" : "flex h-10 items-center gap-1 rounded-full bg-card p-1"}>
@@ -499,7 +508,9 @@ function Stage() {
     </div>
   );
 
-  if (wide) {
+  return <StageContext.Provider value={stage}>{wide ? wideStage() : framed ? framedStage() : phoneStage()}</StageContext.Provider>;
+
+  function wideStage() {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
         <StageBar center={<DemoPath />}>
@@ -520,7 +531,7 @@ function Stage() {
     );
   }
 
-  if (framed) {
+  function framedStage() {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
         <StageBar>{switcher()}</StageBar>
@@ -539,28 +550,30 @@ function Stage() {
     );
   }
 
-  return (
-    <div data-demo-chrome className="relative flex h-dvh flex-col bg-surface">
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-[max(env(safe-area-inset-top),8px)]">
-        <div className="pointer-events-auto flex h-11 w-full items-center gap-1 rounded-full bg-surface/80 px-1.5 shadow-[0_10px_28px_-16px_rgb(20_14_60/0.4)] ring-1 ring-line backdrop-blur-md">
-          <Link href="/" aria-label={t("Accueil Koinon", "Koinon home")} className="grid size-9 shrink-0 place-items-center">
-            <Logo size={28} withName={false} />
-          </Link>
-          {switcher(true)}
-          <LangPill />
-          <button type="button" onClick={() => setNetwork(true)} aria-label={t("Réseau de test", "Test network")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink hover:bg-card">
-            <IconCube size={18} />
-          </button>
-        </div>
-      </header>
-      {STAGE_ROLES.map((role) => (
-        <div key={role} style={{ display: holder === role ? "contents" : "none" }}>
-          <PhoneFrame framed={false}>
-            <PhoneApp role={role} initial={role === "O2" ? "requests" : "home"} />
-          </PhoneFrame>
-        </div>
-      ))}
-      <NetworkSheet open={network} onClose={() => setNetwork(false)} />
-    </div>
-  );
+  function phoneStage() {
+    return (
+      <div data-demo-chrome className="relative flex h-dvh flex-col bg-surface">
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-[max(env(safe-area-inset-top),8px)]">
+          <div className="pointer-events-auto flex h-11 w-full items-center gap-1 rounded-full bg-surface/80 px-1.5 shadow-[0_10px_28px_-16px_rgb(20_14_60/0.4)] ring-1 ring-line backdrop-blur-md">
+            <Link href="/" aria-label={t("Accueil Koinon", "Koinon home")} className="grid size-9 shrink-0 place-items-center">
+              <Logo size={28} withName={false} />
+            </Link>
+            {switcher(true)}
+            <LangPill />
+            <button type="button" onClick={() => setNetwork(true)} aria-label={t("Réseau de test", "Test network")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink hover:bg-card">
+              <IconCube size={18} />
+            </button>
+          </div>
+        </header>
+        {STAGE_ROLES.map((role) => (
+          <div key={role} style={{ display: holder === role ? "contents" : "none" }}>
+            <PhoneFrame framed={false}>
+              <PhoneApp role={role} initial={role === "O2" ? "requests" : "home"} />
+            </PhoneFrame>
+          </div>
+        ))}
+        <NetworkSheet open={network} onClose={() => setNetwork(false)} />
+      </div>
+    );
+  }
 }

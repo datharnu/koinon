@@ -39,7 +39,7 @@ Empty is a real response with nothing in it: no members, no ledger rows, no pend
 
 Long text is truncated on the row and kept in full behind it. Limits the API already enforces: fund name 80, pseudonym 40, purpose 140, reject reason 140. A bech32 address is shown in full on a detail view and may be cut in the middle on a row. A list of members pages with the ledger's `limit` and `offset`. The default ledger page is 50.
 
-The screens that exist are `/`, `/app`, `/fonds/:id`, and `/cosign`. `/app` at 1180px and wider shows two phones. Below that, one phone with a switch. Playwright ran `e2e/walkthrough.spec.ts` locally on 17 Nov 2026 against the Vite dev server and the host coordinator: 390×844 passed in 39.2s, 360×740 passed in 39.8s. GitHub Actions has not run that spec yet. The workflow file includes it. Long names truncate on a row and stay whole in the proof sheet.
+The screens that exist are `/`, `/app`, `/fonds/:id`, and `/cosign`. `/app` at 1180px and wider shows two phones. Below that, one phone with a switch. Playwright ran `e2e/walkthrough.spec.ts` locally on 20 Nov 2026 against the Vite dev server and the host coordinator: 390×844 passed in 33.3s, 360×740 passed in 33.4s (17 Nov, older walkthrough: 39.2s and 39.8s). GitHub Actions has not run that spec yet. The workflow file includes it. Long names truncate on a row and stay whole in the proof sheet.
 
 ## Ledger
 
