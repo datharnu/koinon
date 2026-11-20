@@ -83,9 +83,9 @@ The homepage says "Nobody empties the fund alone." Main button: "Try the demo."
 - A swapped payee stops before signing: `PSBT_MISMATCH`, "the transaction does not pay the requested recipient."
 - Invite link for WhatsApp. No account and no key. The sheet says "Checked on this phone from Bitcoin bytes, not from the server's database," and names Ibou + Coumba only when the link fingerprint matches.
 - French and English switch in the header. Playwright passed at 390×844 (33.3s) and 360×740 (33.4s) on 20 Nov 2026, headless Chromium on this Mac, not a handset.
-- Signing code loads only on `/app` (372,751 bytes). `/` is 109,610 bytes, `/fonds/:id` 142,007, unknown fund. One headless run on the current build, 18 Nov 2026.
+- Signing code loads only on `/app`. The 18 Nov preview run transferred 372,751 bytes there, 109,610 on `/`, and 142,007 on `/fonds/:id`. The 20 Nov run against the live site is in [Evidence](#evidence).
 
-Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
+Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026 and again on 20 Nov 2026.
 
 <a id="demo"></a>
 
@@ -100,20 +100,20 @@ Live: HostAfrica, Nigeria, one HTTPS origin, `/v1/health` ok on 18 Nov 2026.
 
 Caddy serves the built `apps/web` static files and proxies `/v1` and `/relay` to the coordinator stack in Docker on that VPS. Passkeys are bound to this hostname, and the Nostr websocket is on the same origin. A static-only host has no `/v1` and no relay, so the interactive demo lives only here.
 
-Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) returned `{"ok":true,"network":"regtest","bitcoind":true,"demo":true}` on 18 Nov 2026.
+Health check: [`GET /v1/health`](https://102-68-84-31.sslip.io/v1/health) returned `{"ok":true,"network":"regtest","bitcoind":true,"demo":true}` on 18 Nov 2026, and the same JSON on 20 Nov 2026 after the web image was rebuilt from `a4e1306`.
 
-The recorded bitcoind refusals come from the Mac script below, not from the live site.
+The 17 Nov script refusals further down were recorded on this Mac. The hosted column in the table is the live site.
 
 **The walkthrough, hosted and local, side by side.** One 15,000 F hall rental carries every step.
 
 | Step | What you do | What you should see | Local, 20 Nov 2026 | Hosted |
 | --- | --- | --- | --- | --- |
-| 1 signature | Ibou: Spend, Review, Sign and send, View the request, then "Send with only Ibou's signature" | "1 of 2 approvals. No money has moved." then Blocked; See the raw answer shows `NULLFAIL` / `Signature must be zero`; "This request is unchanged" | Passed | Not yet run on this build |
-| Changed payee | Test network, "The server swaps the recipient" | `PSBT_MISMATCH`, naming the same 15,000 F hall rental, unchanged | Passed | Not yet run on this build |
-| 2 signatures | "Switch to Coumba to approve", Approve, Send the transaction, "Mine a block to confirm (test network)" | "2 of 2 approvals.", then "Sent. Waiting for a block, not confirmed yet.", then "Paid. The transaction is in a block." | Passed | Not yet run on this build |
-| Member receipt | "Open the member receipt" | The proof opens by itself: "Checked on this phone from Bitcoin bytes", Ibou + Coumba, P2WSH 2-of-3 + CSV; "Keys match this link" | Passed | Not yet run on this build |
+| 1 signature | Ibou: Spend, Review, Sign and send, View the request, then "Send with only Ibou's signature" | "1 of 2 approvals. No money has moved." then Blocked; See the raw answer shows `NULLFAIL` / `Signature must be zero`; "This request is unchanged" | Passed | Passed. The refusal is not a transaction. |
+| Changed payee | Test network, "The server swaps the recipient" | `PSBT_MISMATCH`, naming the same 15,000 F hall rental, unchanged | Passed | Passed. No transaction. |
+| 2 signatures | "Switch to Coumba to approve", Approve, Send the transaction, "Mine a block to confirm (test network)" | "2 of 2 approvals.", then "Sent. Waiting for a block, not confirmed yet.", then "Paid. The transaction is in a block." | Passed | Passed. Spend tx `af6218e4f4d6a14e1257da36c96e4f9574f741e477abc470bc69a09d48056b11`. |
+| Member receipt | "Open the member receipt" | The proof opens by itself: "Checked on this phone from Bitcoin bytes", Ibou + Coumba, P2WSH 2-of-3 + CSV; "Keys match this link" | Passed | Passed. [The receipt](https://102-68-84-31.sslip.io/fonds/965a6c0b-0e74-417f-817d-b8d1775dfe5a?tx=af6218e4f4d6a14e1257da36c96e4f9574f741e477abc470bc69a09d48056b11#100aff4158ce241ee1fbb0b4453b055a2199eed85d2078b6e050d967bf603bf8). |
 
-Local is `pnpm ui-walk` (Playwright, headless Chromium on this Mac, native regtest, Vite dev server): 390×844 passed in 33.3s and 360×740 in 33.4s. The hosted site still serves the 18 Nov build until it is rebuilt; the hosted column is filled from a fresh run after that, with its txids.
+Local is `pnpm ui-walk` (Playwright, headless Chromium on this Mac, native regtest, Vite dev server): 390×844 passed in 33.3s and 360×740 in 33.4s. Hosted is the same spec, `KOINON_WEB=https://102-68-84-31.sslip.io`, project 390 only, on 20 Nov 2026: Playwright reported 1.3 min, 1 passed. 360 was not run against the host. The fund is `965a6c0b-0e74-417f-817d-b8d1775dfe5a`. Right after that run, `GET /v1/funds/965a6c0b-0e74-417f-817d-b8d1775dfe5a/proof/af6218e4f4d6a14e1257da36c96e4f9574f741e477abc470bc69a09d48056b11` returned `kind: spend`, `confirmations: 14`, `network: regtest`. The same run also mined the recovery delay, and the chain is shared, so 14 is not one block. Regtest sats have no value. The one-signature try and the swapped payee produced no txid.
 
 **Run the stack without installing Bitcoin Core.** Docker Compose. GitHub Actions runs these commands ([run 44156940764](https://github.com/datharnu/koinon/actions/runs/44156940764)). Without `KOINON_SITE`, open http://127.0.0.1:8000. The public host sets `KOINON_SITE`, as [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -318,7 +318,15 @@ GitHub Actions: [run 44156940764](https://github.com/datharnu/koinon/actions/run
 | `/fonds/:id` | 4,258 ms | 142,007 bytes | Those, plus the proof chunk. No signing code. The fund id was unknown, so the screen was "Fund not found". |
 | `/app` | 9,283 ms | 372,751 bytes | Those, plus the proof and signing chunks. The signing chunk's last byte was at 8,616 ms. No coordinator was running behind `vite preview`. |
 
-Measured 18 Nov 2026 on the build the VPS serves: `index-DNZNbqZM.js`, `Home-BmW8gNjq.js`, `phone-CaqK5Sdg.js`, `pinpad-UlJSUC62.js`. The first run, before the homepage redesign, was `/` 3,839 ms and 109,054 bytes, `/fonds/:id` 4,249 ms and 140,460 bytes, `/app` 8,781 ms and 370,383 bytes.
+Measured 18 Nov 2026 on the build the VPS served that day: `index-DNZNbqZM.js`, `Home-BmW8gNjq.js`, `phone-CaqK5Sdg.js`, `pinpad-UlJSUC62.js`. The first run, before the homepage redesign, was `/` 3,839 ms and 109,054 bytes, `/fonds/:id` 4,249 ms and 140,460 bytes, `/app` 8,781 ms and 370,383 bytes.
+
+The same script, one run, 20 Nov 2026, with `KOINON_PREVIEW=https://102-68-84-31.sslip.io`. Headless Chromium on this Mac. Cache off. The browser added 400 ms of latency and a cap of 400 × 1024 / 8 bytes per second, each way, on top of the real trip to the VPS. CPU throttle 4. Viewport 390×844. This is emulation, not a mid-range Android, and nobody used the site unaided.
+
+| Route | Visible | Transfer | What loaded |
+| --- | --- | --- | --- |
+| `/` | 4,362 ms | 114,736 bytes | `index-Ckxcu5ob.js`, `Home-D2DVLkdO.js`, avatar, CSS. No signing code. |
+| `/fonds/:id` | 4,992 ms | 147,042 bytes | Those, plus `phone-qFFKknIn.js` and `MemberView-DDTSf4YS.js`. No signing code. Unknown fund id. |
+| `/app` | 10,335 ms | 396,046 bytes | Those, plus `Demo-Dvbt6al3.js` and `pinpad-Difj8dNP.js`. The signing chunk's last byte was at 10,079 ms (244,021 bytes transferred). |
 
 Vite's own size lines for that build: signing chunk `pinpad-UlJSUC62.js` 730.52 kB raw, 228.01 kB gzip. Proof chunk `phone-CaqK5Sdg.js` 116.76 kB raw, 39.85 kB gzip. Homepage chunk `Home-BmW8gNjq.js` 26.63 kB raw, 8.92 kB gzip. An earlier build was 708 kB raw, 228 kB gzip for the signing code, and that file loaded on `/fonds` as well. It no longer does. Fonts and the homepage hero image were not in the transfer at the moment the text appeared. The script is `scripts/measure-web.mjs`. One run each. A few milliseconds of noise is expected if this is run again.
 
